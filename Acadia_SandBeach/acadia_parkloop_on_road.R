@@ -8,7 +8,7 @@ library(leaflet)
 library(leaflet.extras) # addHeatmap
 
 # establishing my base directory rather than actually changing my directory, I just find this easier
-p_file_path <- "/Users/Nineveh.OConnell/OneDrive - DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/7- Video Analysis/ParkLoopRd//"
+p_file_path <- "/Users/Nineveh.OConnell/OneDrive - DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/7- Video Analysis/ParkLoopRd/"
 
 #==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#==#
 # Load all processed Park Loop Rd Files --------------------
@@ -21,7 +21,6 @@ ls_files <- lapply(file_paths, function(x) {
 })
 names(ls_files) <- gsub("cv_output|.ts.csv", "", file_paths)
 stacked_parkloop <- rbindlist(ls_files, idcol = "source_file", fill = T)
-
 
 # load the gps pings
 in_gps_pings <- fread("/Users/Nineveh.OConnell/OneDrive - DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/4- Data Collection/Video Data/GPS Data/ParkLoop_dashcam_gps_cleaned.csv")
@@ -82,12 +81,15 @@ coords_agg <- vehicles_w_coordsRoll[, .(count = .N), by = .(latitude, longitude)
 center_lat <- mean(coords_agg$lat, na.rm = TRUE)
 center_long <- mean(coords_agg$long, na.rm = TRUE)
 
+# drop records of vehicles outside of park loop road
+coords_agg <- coords_agg[!is.na(latitude)]
+
 m <- leaflet(coords_agg) %>%
   addTiles() %>%
   setView(lng = center_long, lat = center_lat, zoom = 14) %>%
   addHeatmap(
     lng = ~longitude, lat = ~latitude, intensity = ~count,
-    blur = 15, radius = 12, max = max(coords_agg$count, na.rm = TRUE)
+    blur = 3, radius = 8, max = max(coords_agg$count, na.rm = TRUE)
   )  %>%
   addCircleMarkers(radius = count)
 
@@ -96,6 +98,6 @@ m
 
 # export csv to load into arcgis
 write.csv(vehicles_w_coordsRoll,
-          "/Users/Nineveh.OConnell/OneDrive - DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/7- Video Analysis/ParkLoopRd/vehicles_w_gps_morning.csv",
+          "/Users/Nineveh.OConnell/OneDrive - DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/7- Video Analysis/ParkLoopRd/vehicles_w_gps.csv",
           row.names = F)
 
