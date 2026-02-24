@@ -15,12 +15,12 @@ in_acad_table[, lot := factor(lot, levels = c("el lake", "el road", "jphnorth", 
                                               "sbl", "sbu"), ordered = T) ]
 in_acad_table[, attraction := ifelse(grepl("jph", lot), "Jordan Pond House", 
                                      ifelse(grepl("sb", lot), "Sand Beach", "Eagle Lake"))]
-in_acad_table[lot == "el lake", lot_name_full := "Eagle Lake, Lakeside"]
-in_acad_table[lot == "el road", lot_name_full := "Eagle Lake, Roadside"]
-in_acad_table[lot == "jphsouth", lot_name_full := "Jordan Pond House, South"]
-in_acad_table[lot == "jphnorth", lot_name_full := "Jordan Pond House, North"]
-in_acad_table[lot == "sbl", lot_name_full := "Sand Beach, Lower Lot"]
-in_acad_table[lot == "sbu", lot_name_full := "Sand Beach, Upper Lot"]
+in_acad_table[lot == "el lake", lot_name_full := "Eagle Lake Boat Launch"]
+in_acad_table[lot == "el road", lot_name_full := "Eagle Lake Lot"]
+in_acad_table[lot == "jphsouth", lot_name_full := "Jordan Pond South Lot"]
+in_acad_table[lot == "jphnorth", lot_name_full := "Jordan Pond North Lot"]
+in_acad_table[lot == "sbl", lot_name_full := "Sand Beach Lower Lot"]
+in_acad_table[lot == "sbu", lot_name_full := "Sand Beach Upper Lot"]
 
 # median stay length for these different lots, labelled with the sample size and split by the attractions
 ggplot(in_acad_table[hour_parked != "all"], aes(x = hour_parked, y = median_stay_minutes, fill = lot)) +
@@ -52,8 +52,8 @@ in_acad_table[, interpolated_vehicles_entered := NULL]
 in_acad_table[hour_parked != "all" & combined_cars_parking > vehicles_entered_lot, vehicles_entered_lot := NA]
 
 # make lot names into a factor to force plot order
-plot_lot_order <- c("Sand Beach, Upper Lot", "Jordan Pond House, South", "Eagle Lake, Lakeside",           
-                    "Sand Beach, Lower Lot", "Jordan Pond House, North", "Eagle Lake, Roadside")
+plot_lot_order <- c("Sand Beach Upper Lot", "Jordan Pond South Lot", "Eagle Lake Boat Launch",           
+                    "Sand Beach Lower Lot", "Jordan Pond North Lot", "Eagle Lake Lot")
 totalcap_in_order <- c("22", "71", "8", "101", "185", "28")
 avg_stays_in_order <- c("80", "107", "104", "83", "120", "101")
 in_acad_table[, lot_name_full := factor(lot_name_full, 
@@ -67,11 +67,12 @@ pct_parked_tbl[, pct_parked := round(100*parked_v/entered_v)]
 
 
 # reshape
+in_acad_table[, vehicles_beyond_capacity := vehicles_entered_lot - combined_cars_parking]
 combined_metrics_plot_data <- melt.data.table(in_acad_table, id.vars = c("lot_name_full", "standard_capacity", "public_capacity", "hour_parked", "median_stay_minutes"),
-                                              measure.vars = c("vehicles_entered_lot", "combined_cars_parking"), variable.name = "metric_type", value.name = "count_vehicles")
+                                              measure.vars = c("vehicles_beyond_capacity", "combined_cars_parking"), variable.name = "metric_type", value.name = "count_vehicles")
 
 # rename the metric type values so it comes up nice in the legend
-combined_metrics_plot_data[, metric_type := ifelse(metric_type == "vehicles_entered_lot", "Did Not Find Parking", "Successfully Parked")]
+combined_metrics_plot_data[, metric_type := ifelse(metric_type == "vehicles_beyond_capacity", "Did Not Find Parking", "Successfully Parked")]
 
 
 # # make one-row-per-lot with its capacity for horizontal line limits
@@ -82,33 +83,61 @@ combined_metrics_plot_data[, metric_type := ifelse(metric_type == "vehicles_ente
 # Include text under each lot name with computed average stay length for vehicles
 # for which we saw the arrival and the departure.
 # THEN WRITE UP METHOD, INCLUDE IN SLIDE FOR FEEDBACK
-acad_availability_plot <- ggplot(combined_metrics_plot_data[hour_parked != "all"], aes(x = hour_parked)) +
-  # geom_hline(aes(yintercept = public_capacity), size = 0.9) +
-  # geom_hline(aes(yintercept = standard_capacity), linetype='dotted', size = 0.7) + 
-  geom_col(aes(y = count_vehicles, fill = metric_type), width = 1.6, position = position_dodge(width = 0)) +
+acad_availability_plot <- ggplot(combined_metrics_plot_data[hour_parked != "all"], 
+                                 aes(x = hour_parked, group = metric_type, y = count_vehicles)) +
+  geom_col(aes(fill = metric_type), width = 0.8, position = position_dodge(width = 0.8)) +
   # value labels just below the top of each column (inside bar)
-  geom_text(aes(y = count_vehicles, label = count_vehicles),
-            position = position_dodge(width = 1.6),
+  geom_text(aes(label = count_vehicles),
+            position = position_dodge(width = 0.8),
             vjust = 1.1,                # >1 nudges text slightly downward from the top
-            size = 3,                   # adjust size as needed
+            size = 4,                   # adjust size as needed
+            fontface = "bold",
             color = "white") +          # change to "black" if bars are light
-  #add one label per facet; inherit.aes = FALSE so we control mappings here
-  geom_label(
-    data = pct_parked_tbl,
-    aes(x = Inf, y = Inf, label = paste0(pct_parked, "% Parked")),
-    inherit.aes = FALSE,
-    hjust = 1.05,            # nudge slightly inside from right edge
-    vjust = 0.7,            # nudge above the line a bit
-    size = 3
-  ) +
   theme_minimal() +
-  theme(legend.position = "top", legend.direction = "horizontal", text = element_text(size = 12)) +
+  theme(legend.position = "top", legend.direction = "horizontal", text = element_text(size = 16)) +
   labs(x = "Hour", y = "Count Vehicles") +
   facet_wrap(~lot_name_full, scales = "free_y") +
-  scale_fill_manual(values = c("#0052ba", "#5e8fff"), name = "Vehicle Action in the Given Hour") +
+  scale_fill_manual(values = c("#0052ba", "#5e8fff"), name = "Vehicle Action in the Lot") +
   ggtitle("Hourly Vehicle Activity, By Hour and Lot", 
           subtitle = "Vehicle activity in each lot by hour from 9 am to 4 pm on the day of observation.\nLabelled with the number of vehicles that parked and the total number of vehicles that drove into the lot each hour.") +
   coord_cartesian(clip = "off")
+
+integer_breaks <- function(n = 5, ...) {
+  breaker <- scales::pretty_breaks(n, ...)
+  function(x) {
+    breaks <- breaker(x)
+    breaks[breaks == floor(breaks)]
+  }
+}
+
+# separate plot for each lot
+for(individ_lot in combined_metrics_plot_data[, unique(lot_name_full)]) {
+  single_lot_veh_parked <- combined_metrics_plot_data[individ_lot == lot_name_full & hour_parked != "all"]
+  p_single_lot_hourly <- ggplot(single_lot_veh_parked, 
+                                   aes(x = hour_parked, group = metric_type, y = count_vehicles)) +
+    geom_col(aes(fill = metric_type), width = 0.85, 
+             position = position_dodge(width = 0.85)) +
+    # value labels just below the top of each column (inside bar)
+    geom_text(aes(label = count_vehicles),
+              position = position_dodge(width = 0.85),
+              vjust = 1.1,                # >1 nudges text slightly downward from the top
+              size = 3.5,                   # adjust size as needed
+              fontface = "bold",
+              color = "white") +          # change to "black" if bars are light
+    theme_minimal() +
+    theme(legend.position = "top", legend.direction = "horizontal", 
+          text = element_text(size = 12), legend.title = element_blank()) +
+    labs(x = "Hour", y = "Count Vehicles") +
+    scale_y_continuous(breaks = integer_breaks())+ #limits = c(0, NA)
+    scale_fill_manual(values = c("#0052ba", "#5e8fff")) +
+    coord_cartesian(clip = "off")
+  
+  ggsave(filename = paste0(gsub("\n.*", "", individ_lot), "_vehicles_in_lot.png"), 
+         plot = p_single_lot_hourly, 
+         path = paste0("/Users/Nineveh.OConnell/DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/5- Processed Data Outputs/visuals/"),
+         width = 4, height = 4)
+  
+}
 
 # average stay length for these different lots, labelled with the sample size and split by the attractions
 # SHOULD THIS BE AVERAGE OR MEDIAN? WHAT'S MORE USEFUL TO KNOW?

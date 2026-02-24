@@ -238,6 +238,74 @@ filled_spots_only[, hour_departed := hour(assumedTimeOut)]
     coord_cartesian(clip = "off")
   print(p)
   
+  integer_breaks <- function(n = 5, ...) {
+    breaker <- scales::pretty_breaks(n, ...)
+    function(x) {
+      breaks <- breaker(x)
+      breaks[breaks == floor(breaks)]
+    }
+  }
+  
+  p_lot_fill <- ggplot(plot_dt_long[`Vehicle Group` == "Vehicles Parked"], aes(x = slot_start, group = `Vehicle Group`, color = `Vehicle Group`)) +
+    geom_hline(aes(yintercept = total_spots), size = 0.7, linetype = "dotted") +
+    geom_line(aes(y = cnt_vehicles), linewidth = 1) +
+    geom_point(aes(y = cnt_vehicles), size = 1.2) +
+    facet_wrap(~ lot_name_full, ncol = 3, scales = "fixed") +     # scales="fixed" ensures axes are consistent across facets
+    scale_y_continuous(breaks = integer_breaks())+ #limits = c(0, NA)
+    scale_x_datetime(
+      breaks = seq(as.POSIXct("1970-01-01 09:00:00", tz = "UTC"),
+                   as.POSIXct("1970-01-01 16:00:00", tz = "UTC"),
+                   by = "1 hour"),
+      labels = function(x) as.integer(format(x, "%H")),   # prints 9, 10, 11, 12, 13, ...
+      expand = expansion(add = c(0, 0))
+    ) +
+    labs(
+      title = "Parking Lot Occupancy (15-minute intervals)",
+      x = "Time of day",
+      y = "Count Vehicles Parked"
+    ) +
+    scale_color_manual(values = c("#5e8fff"), name = "Vehicle Position") +
+    theme_minimal() +
+    theme(legend.position = "top", text = element_text(size = 16)) +
+    facet_wrap(~lot_name_full, scales = "free_y") +
+    coord_cartesian(clip = "off")
+  
+  # separate plot for each lot
+  for(individ_lot in plot_dt_long[, unique(lot_name_full)]) {
+    single_lot_veh_parked <- plot_dt_long[`Vehicle Group` == "Vehicles Parked" & lot_name_full == individ_lot]
+    p_lot_fill_individ <- ggplot(single_lot_veh_parked, aes(x = slot_start, group = `Vehicle Group`, color = `Vehicle Group`)) +
+      geom_hline(aes(linetype = "Lot Capacity", yintercept = total_spots), size = 0.7, linetype = "dotted") + 
+      annotate("text", fontface = "italic", size = 4, 
+               as.POSIXct(ifelse(individ_lot == "Eagle Lake, Roadside", "1970-01-01 10:30:00", "1970-01-01 09:30:00"), tz = "UTC"), 
+               unique(single_lot_veh_parked$total_spots), label = "Lot Capacity", 
+               vjust = 1.3) +
+      geom_line(aes(y = cnt_vehicles), linewidth = 1) +
+      geom_point(aes(y = cnt_vehicles), size = 1.2) +
+      scale_linetype_manual(values = 3) + 
+      scale_y_continuous(breaks = integer_breaks())+ #limits = c(0, NA)
+      scale_x_datetime(
+        breaks = seq(as.POSIXct("1970-01-01 09:00:00", tz = "UTC"),
+                     as.POSIXct("1970-01-01 16:00:00", tz = "UTC"),
+                     by = "1 hour"),
+        labels = function(x) as.integer(format(x, "%H")),   # prints 9, 10, 11, 12, 13, ...
+        expand = expansion(add = c(0, 0))
+      ) +
+      labs(
+        x = "Time of day",
+        y = "Count Vehicles Parked", linetype = NULL
+      ) +
+      scale_color_manual(values = c("#5e8fff"), name = "Vehicle Position") +
+      theme_minimal() +
+      theme(legend.position = "top", text = element_text(size = 16), legend.title = element_blank(),
+            plot.margin = margin(t = 0.1, r = 1, b = 0.1, l = 0.1, unit = "cm")) +
+      coord_cartesian(clip = "off")
+    ggsave(filename = paste0(individ_lot, "_vehicles_parked.png"), 
+           plot = p_lot_fill_individ, 
+           path = paste0("/Users/Nineveh.OConnell/DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/5- Processed Data Outputs/", "visuals/"),
+           width = 8, height = 4.5)
+    
+  }
+  
   ggsave(filename = "acad_lot_vehicle_activity.png", 
          plot = p, 
          path = paste0("/Users/Nineveh.OConnell/DOT OST/volpe-proj-VXAGA1-NPS NERO - ACAD Data Collection/ACAD Data Collection/5- Processed Data Outputs/", "visuals/"),
