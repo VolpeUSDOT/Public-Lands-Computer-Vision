@@ -244,7 +244,7 @@ def result_to_json_text(result: RunResult) -> str:
 
 def result_to_feed_text(result: RunResult) -> str:
     lines = [
-        "Arch webcam vehicle feed",
+        "Arches webcam vehicle feed",
         f"status: {result.status}",
         f"timestamp_utc: {result.timestamp_utc}",
         f"webcam_page_url: {result.webcam_page_url}",
@@ -348,7 +348,7 @@ def publish_feed_to_github(feed_text: str, config: Config) -> tuple[bool, str]:
         config.github_branch,
         config.github_feed_path,
         config.github_token,
-        "Update Arch webcam feed",
+        "Update Arches webcam feed",
     )
 
 
@@ -362,12 +362,12 @@ def publish_json_to_github(json_text: str, config: Config) -> tuple[bool, str]:
         config.github_branch,
         config.github_json_path,
         config.github_token,
-        "Update Arch vehicle count JSON",
+        "Update Arches vehicle count JSON",
     )
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Count vehicles in the Arch webcam image")
+    parser = argparse.ArgumentParser(description="Count vehicles in the Arches webcam image")
     parser.add_argument("--output", type=Path, default=None, help="Override output JSON path")
     parser.add_argument("--feed-output", type=Path, default=None, help="Override local feed text output path")
     parser.add_argument("--model", default=None, help="Override YOLO model path")
