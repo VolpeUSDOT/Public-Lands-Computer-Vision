@@ -27,6 +27,7 @@ DEFAULT_MODEL_PATH = "yolov8x.pt"
 DEFAULT_FEED_OUTPUT_PATH = Path(__file__).resolve().parent / "arches_latest_feed.txt"
 DEFAULT_GITHUB_REPOSITORY = "VolpeUSDOT/Public-Lands-Computer-Vision"
 DEFAULT_GITHUB_BRANCH = "main"
+DEFAULT_GITHUB_JSON_PATH = "YOLO/arches_latest_feed.json"
 DEFAULT_GITHUB_FEED_PATH = "YOLO/arches_latest_feed.txt"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
@@ -46,6 +47,7 @@ class Config:
     feed_output_path: Path = DEFAULT_FEED_OUTPUT_PATH
     github_repository: str = DEFAULT_GITHUB_REPOSITORY
     github_branch: str = DEFAULT_GITHUB_BRANCH
+    github_json_path: str = DEFAULT_GITHUB_JSON_PATH
     github_feed_path: str = DEFAULT_GITHUB_FEED_PATH
     github_token: Optional[str] = None
     publish_to_github: bool = False
@@ -94,6 +96,7 @@ def load_config() -> Config:
         feed_output_path=feed_output_path,
         github_repository=os.getenv("GITHUB_REPOSITORY", DEFAULT_GITHUB_REPOSITORY),
         github_branch=os.getenv("GITHUB_BRANCH", DEFAULT_GITHUB_BRANCH),
+        github_json_path=os.getenv("GITHUB_JSON_PATH", DEFAULT_GITHUB_JSON_PATH),
         github_feed_path=os.getenv("GITHUB_FEED_PATH", DEFAULT_GITHUB_FEED_PATH),
         github_token=github_token,
         publish_to_github=publish_to_github,
@@ -235,6 +238,10 @@ def result_to_dict(result: RunResult) -> dict[str, Any]:
     return payload
 
 
+def result_to_json_text(result: RunResult) -> str:
+    return json.dumps(result_to_dict(result), indent=2) + "\n"
+
+
 def result_to_feed_text(result: RunResult) -> str:
     lines = [
         "Arch webcam vehicle feed",
@@ -269,8 +276,7 @@ def result_to_feed_text(result: RunResult) -> str:
 
 def write_result(result: RunResult, output_path: Path) -> Path:
     output_path.parent.mkdir(parents=True, exist_ok=True)
-    payload = result_to_dict(result)
-    output_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    output_path.write_text(result_to_json_text(result), encoding="utf-8")
     return output_path
 
 
@@ -293,16 +299,13 @@ def get_github_headers(token: str) -> dict[str, str]:
     }
 
 
-def publish_feed_to_github(feed_text: str, config: Config) -> tuple[bool, str]:
-    if not config.github_token:
-        return False, "Skipped GitHub publish: no GITHUB_TOKEN or GH_TOKEN set"
-
-    headers = get_github_headers(config.github_token)
-    url = github_contents_api_url(config.github_repository, config.github_feed_path)
+def publish_text_to_github(content_text: str, repository: str, branch: str, file_path: str, token: str, message: str) -> tuple[bool, str]:
+    headers = get_github_headers(token)
+    url = github_contents_api_url(repository, file_path)
 
     current_sha: Optional[str] = None
     try:
-        response = requests.get(url, headers=headers, params={"ref": config.github_branch}, timeout=10)
+        response = requests.get(url, headers=headers, params={"ref": branch}, timeout=10)
         if response.status_code == 200:
             payload = response.json()
             current_sha = payload.get("sha")
@@ -311,17 +314,17 @@ def publish_feed_to_github(feed_text: str, config: Config) -> tuple[bool, str]:
             encoding = payload.get("encoding")
             if existing_content and encoding == "base64":
                 decoded = base64.b64decode(existing_content).decode("utf-8")
-                if decoded == feed_text:
-                    return True, "GitHub feed already up to date; no publish needed"
+                if decoded == content_text:
+                    return True, f"GitHub file already up to date: {file_path}"
         elif response.status_code != 404:
             response.raise_for_status()
     except requests.RequestException as exc:
-        return False, f"Failed to inspect GitHub feed: {exc}"
+        return False, f"Failed to inspect GitHub file {file_path}: {exc}"
 
     body: dict[str, Any] = {
-        "message": "Update latest feed from Arch vehicle count script",
-        "content": base64.b64encode(feed_text.encode("utf-8")).decode("ascii"),
-        "branch": config.github_branch,
+        "message": message,
+        "content": base64.b64encode(content_text.encode("utf-8")).decode("ascii"),
+        "branch": branch,
     }
     if current_sha:
         body["sha"] = current_sha
@@ -330,9 +333,37 @@ def publish_feed_to_github(feed_text: str, config: Config) -> tuple[bool, str]:
         response = requests.put(url, headers=headers, json=body, timeout=20)
         response.raise_for_status()
     except requests.RequestException as exc:
-        return False, f"Failed to publish GitHub feed: {exc}"
+        return False, f"Failed to publish GitHub file {file_path}: {exc}"
 
-    return True, f"Published {config.github_repository}/{config.github_feed_path} on {config.github_branch}"
+    return True, f"Published {repository}/{file_path} on {branch}"
+
+
+def publish_feed_to_github(feed_text: str, config: Config) -> tuple[bool, str]:
+    if not config.github_token:
+        return False, "Skipped GitHub publish: no GITHUB_TOKEN or GH_TOKEN set"
+
+    return publish_text_to_github(
+        feed_text,
+        config.github_repository,
+        config.github_branch,
+        config.github_feed_path,
+        config.github_token,
+        "Update Arch webcam feed",
+    )
+
+
+def publish_json_to_github(json_text: str, config: Config) -> tuple[bool, str]:
+    if not config.github_token:
+        return False, "Skipped GitHub publish: no GITHUB_TOKEN or GH_TOKEN set"
+
+    return publish_text_to_github(
+        json_text,
+        config.github_repository,
+        config.github_branch,
+        config.github_json_path,
+        config.github_token,
+        "Update Arch vehicle count JSON",
+    )
 
 
 def parse_args() -> argparse.Namespace:
@@ -356,6 +387,7 @@ def build_config(args: argparse.Namespace) -> Config:
         feed_output_path=args.feed_output or config.feed_output_path,
         github_repository=config.github_repository,
         github_branch=config.github_branch,
+        github_json_path=config.github_json_path,
         github_feed_path=config.github_feed_path,
         github_token=config.github_token,
         publish_to_github=config.publish_to_github,
@@ -371,18 +403,22 @@ def main() -> int:
     config = build_config(args)
     result = run_detection(config)
     output_path = write_result(result, config.output_path)
+    json_text = result_to_json_text(result)
     feed_output_path = write_feed(result, config.feed_output_path)
     feed_text = result_to_feed_text(result)
 
-    publish_message = None
+    publish_messages: list[str] = []
     publish_ok = True
     if config.publish_to_github:
-        publish_ok, publish_message = publish_feed_to_github(feed_text, config)
+        json_published, json_message = publish_json_to_github(json_text, config)
+        feed_published, feed_message = publish_feed_to_github(feed_text, config)
+        publish_ok = json_published and feed_published
+        publish_messages.extend([json_message, feed_message])
 
-    print(json.dumps(result_to_dict(result), indent=2))
+    print(json_text.rstrip())
     print(f"Wrote result to {output_path}")
     print(f"Wrote feed to {feed_output_path}")
-    if publish_message:
+    for publish_message in publish_messages:
         print(publish_message)
     return 0 if result.status == "ok" and publish_ok else 1
 
