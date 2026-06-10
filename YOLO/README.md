@@ -1,6 +1,6 @@
 # Arches Webcam Vehicle Count
 
-This script fetches the NPS Arches webcam page, resolves the current webcam image, runs YOLO vehicle detection, and writes the latest result to a JSON artifact that can be committed to GitHub.
+This script fetches the NPS Arches webcam page, resolves the current webcam image, runs YOLO vehicle detection, and writes the latest result to a .txt and JSON artifact that can be committed to GitHub.
 
 ## What it does
 
@@ -9,6 +9,7 @@ This script fetches the NPS Arches webcam page, resolves the current webcam imag
 - Runs YOLOv8 vehicle detection
 - Counts detected vehicles
 - Writes a structured JSON result file
+- Commits to Github
 
 ## Script
 
@@ -31,7 +32,7 @@ The JSON includes:
 - `error`
 - `output_schema`
 
-The script also writes a plain-text feed file at `arches_latest_feed.txt` by default, and can publish that file to GitHub when a token is provided.
+The script also writes a plain-text feed file at `arches_latest_feed.txt` by default, and can publish these files to GitHub when a token is provided.
 
 ## Requirements
 
