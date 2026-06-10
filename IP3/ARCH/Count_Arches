@@ -25,10 +25,12 @@ DEFAULT_WEBCAM_PAGE_URL = (
 DEFAULT_FALLBACK_IMAGE_URL = "https://www.nps.gov/webcams-arch/arch_traffic.jpg"
 DEFAULT_MODEL_PATH = "yolov8x.pt"
 DEFAULT_FEED_OUTPUT_PATH = Path(__file__).resolve().parent / "arches_latest_feed.txt"
+DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH = Path(__file__).resolve().parent / "arches_latest_annotated.jpg"
 DEFAULT_GITHUB_REPOSITORY = "VolpeUSDOT/Public-Lands-Computer-Vision"
 DEFAULT_GITHUB_BRANCH = "main"
 DEFAULT_GITHUB_JSON_PATH = "IP3/ARCH/arches_latest_feed.json"
 DEFAULT_GITHUB_FEED_PATH = "IP3/ARCH/arches_latest_feed.txt"
+DEFAULT_GITHUB_IMAGE_PATH = "IP3/ARCH/arches_latest_annotated.jpg"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -45,10 +47,12 @@ class Config:
     model_path: str = DEFAULT_MODEL_PATH
     output_path: Path = DEFAULT_OUTPUT_PATH
     feed_output_path: Path = DEFAULT_FEED_OUTPUT_PATH
+    annotated_image_output_path: Path = DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH
     github_repository: str = DEFAULT_GITHUB_REPOSITORY
     github_branch: str = DEFAULT_GITHUB_BRANCH
     github_json_path: str = DEFAULT_GITHUB_JSON_PATH
     github_feed_path: str = DEFAULT_GITHUB_FEED_PATH
+    github_image_path: str = DEFAULT_GITHUB_IMAGE_PATH
     github_token: Optional[str] = None
     publish_to_github: bool = False
     confidence: float = 0.50
@@ -84,6 +88,7 @@ def load_config() -> Config:
     load_env_file()
     output_path = Path(os.getenv("OUTPUT_PATH", str(DEFAULT_OUTPUT_PATH))).expanduser()
     feed_output_path = Path(os.getenv("FEED_OUTPUT_PATH", str(DEFAULT_FEED_OUTPUT_PATH))).expanduser()
+    annotated_image_output_path = Path(os.getenv("ANNOTATED_IMAGE_OUTPUT_PATH", str(DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH))).expanduser()
     github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     publish_to_github = os.getenv("PUBLISH_TO_GITHUB", "").strip().lower() in {"1", "true", "yes", "on"}
     if github_token and not os.getenv("PUBLISH_TO_GITHUB"):
@@ -94,10 +99,12 @@ def load_config() -> Config:
         model_path=os.getenv("MODEL_PATH", DEFAULT_MODEL_PATH),
         output_path=output_path,
         feed_output_path=feed_output_path,
+        annotated_image_output_path=annotated_image_output_path,
         github_repository=os.getenv("GITHUB_REPOSITORY", DEFAULT_GITHUB_REPOSITORY),
         github_branch=os.getenv("GITHUB_BRANCH", DEFAULT_GITHUB_BRANCH),
         github_json_path=os.getenv("GITHUB_JSON_PATH", DEFAULT_GITHUB_JSON_PATH),
         github_feed_path=os.getenv("GITHUB_FEED_PATH", DEFAULT_GITHUB_FEED_PATH),
+        github_image_path=os.getenv("GITHUB_IMAGE_PATH", DEFAULT_GITHUB_IMAGE_PATH),
         github_token=github_token,
         publish_to_github=publish_to_github,
         confidence=float(os.getenv("YOLO_CONFIDENCE", "0.50")),
@@ -192,6 +199,10 @@ def serialize_detections(result: Any) -> list[DetectionBox]:
 
 
 def run_detection(config: Config) -> RunResult:
+    return run_detection_with_image(config)[0]
+
+
+def run_detection_with_image(config: Config) -> tuple[RunResult, Optional[np.ndarray]]:
     headers = build_headers(config.user_agent)
     timestamp = now_utc_iso()
 
@@ -211,24 +222,37 @@ def run_detection(config: Config) -> RunResult:
         )
 
         detections = serialize_detections(results[0]) if results else []
-        return RunResult(
-            status="ok",
-            timestamp_utc=timestamp,
-            webcam_page_url=config.webcam_page_url,
-            image_url=image_url,
-            model_path=config.model_path,
-            vehicle_count=len(detections),
-            detections=detections,
-            message=f"Detected {len(detections)} vehicles",
+        annotated_image = annotate_image(img, results)
+        return (
+            RunResult(
+                status="ok",
+                timestamp_utc=timestamp,
+                webcam_page_url=config.webcam_page_url,
+                image_url=image_url,
+                model_path=config.model_path,
+                vehicle_count=len(detections),
+                detections=detections,
+                message=f"Detected {len(detections)} vehicles",
+            ),
+            annotated_image,
         )
     except Exception as exc:
-        return RunResult(
-            status="error",
-            timestamp_utc=timestamp,
-            webcam_page_url=config.webcam_page_url,
-            model_path=config.model_path,
-            error=str(exc),
+        return (
+            RunResult(
+                status="error",
+                timestamp_utc=timestamp,
+                webcam_page_url=config.webcam_page_url,
+                model_path=config.model_path,
+                error=str(exc),
+            ),
+            None,
         )
+
+
+def annotate_image(img: np.ndarray, results: Any) -> np.ndarray:
+    if not results:
+        return img
+    return results[0].plot()
 
 
 def result_to_dict(result: RunResult) -> dict[str, Any]:
@@ -287,6 +311,13 @@ def write_feed(result: RunResult, output_path: Path) -> Path:
     return output_path
 
 
+def write_annotated_image(img: np.ndarray, output_path: Path) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    if not cv2.imwrite(str(output_path), img):
+        raise ValueError(f"Failed to write annotated image to {output_path}")
+    return output_path
+
+
 def github_contents_api_url(repository: str, file_path: str) -> str:
     return f"https://api.github.com/repos/{repository}/contents/{file_path.lstrip('/')}"
 
@@ -338,6 +369,53 @@ def publish_text_to_github(content_text: str, repository: str, branch: str, file
     return True, f"Published {repository}/{file_path} on {branch}"
 
 
+def publish_image_to_github(image: np.ndarray, repository: str, branch: str, file_path: str, token: str, message: str) -> tuple[bool, str]:
+    suffix = Path(file_path).suffix.lower()
+    ext = ".png" if suffix == ".png" else ".jpg"
+    ok, encoded = cv2.imencode(ext, image)
+    if not ok:
+        return False, f"Failed to encode annotated image for {file_path}"
+
+    image_bytes = encoded.tobytes()
+    content_text = base64.b64encode(image_bytes).decode("ascii")
+
+    headers = get_github_headers(token)
+    url = github_contents_api_url(repository, file_path)
+
+    current_sha: Optional[str] = None
+    try:
+        response = requests.get(url, headers=headers, params={"ref": branch}, timeout=10)
+        if response.status_code == 200:
+            payload = response.json()
+            current_sha = payload.get("sha")
+            existing_content = payload.get("content")
+            encoding = payload.get("encoding")
+            if existing_content and encoding == "base64":
+                existing_bytes = base64.b64decode(existing_content)
+                if existing_bytes == image_bytes:
+                    return True, f"GitHub file already up to date: {file_path}"
+        elif response.status_code != 404:
+            response.raise_for_status()
+    except requests.RequestException as exc:
+        return False, f"Failed to inspect GitHub file {file_path}: {exc}"
+
+    body: dict[str, Any] = {
+        "message": message,
+        "content": content_text,
+        "branch": branch,
+    }
+    if current_sha:
+        body["sha"] = current_sha
+
+    try:
+        response = requests.put(url, headers=headers, json=body, timeout=20)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        return False, f"Failed to publish GitHub file {file_path}: {exc}"
+
+    return True, f"Published {repository}/{file_path} on {branch}"
+
+
 def publish_feed_to_github(feed_text: str, config: Config) -> tuple[bool, str]:
     if not config.github_token:
         return False, "Skipped GitHub publish: no GITHUB_TOKEN or GH_TOKEN set"
@@ -366,6 +444,20 @@ def publish_json_to_github(json_text: str, config: Config) -> tuple[bool, str]:
     )
 
 
+def publish_annotated_image_to_github(image: np.ndarray, config: Config) -> tuple[bool, str]:
+    if not config.github_token:
+        return False, "Skipped GitHub publish: no GITHUB_TOKEN or GH_TOKEN set"
+
+    return publish_image_to_github(
+        image,
+        config.github_repository,
+        config.github_branch,
+        config.github_image_path,
+        config.github_token,
+        "Update Arches annotated image",
+    )
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Count vehicles in the Arches webcam image")
     parser.add_argument("--output", type=Path, default=None, help="Override output JSON path")
@@ -389,6 +481,7 @@ def build_config(args: argparse.Namespace) -> Config:
         github_branch=config.github_branch,
         github_json_path=config.github_json_path,
         github_feed_path=config.github_feed_path,
+        github_image_path=config.github_image_path,
         github_token=config.github_token,
         publish_to_github=config.publish_to_github,
         confidence=args.confidence if args.confidence is not None else config.confidence,
@@ -401,23 +494,34 @@ def build_config(args: argparse.Namespace) -> Config:
 def main() -> int:
     args = parse_args()
     config = build_config(args)
-    result = run_detection(config)
+    result, annotated_image = run_detection_with_image(config)
     output_path = write_result(result, config.output_path)
     json_text = result_to_json_text(result)
     feed_output_path = write_feed(result, config.feed_output_path)
     feed_text = result_to_feed_text(result)
+    annotated_image_output_path = None
+    if annotated_image is not None:
+        annotated_image_output_path = write_annotated_image(annotated_image, config.annotated_image_output_path)
 
     publish_messages: list[str] = []
     publish_ok = True
     if config.publish_to_github:
         json_published, json_message = publish_json_to_github(json_text, config)
         feed_published, feed_message = publish_feed_to_github(feed_text, config)
-        publish_ok = json_published and feed_published
+        image_published = True
+        image_message = None
+        if annotated_image is not None:
+            image_published, image_message = publish_annotated_image_to_github(annotated_image, config)
+        publish_ok = json_published and feed_published and image_published
         publish_messages.extend([json_message, feed_message])
+        if image_message:
+            publish_messages.append(image_message)
 
     print(json_text.rstrip())
     print(f"Wrote result to {output_path}")
     print(f"Wrote feed to {feed_output_path}")
+    if annotated_image_output_path:
+        print(f"Wrote annotated image to {annotated_image_output_path}")
     for publish_message in publish_messages:
         print(publish_message)
     return 0 if result.status == "ok" and publish_ok else 1
