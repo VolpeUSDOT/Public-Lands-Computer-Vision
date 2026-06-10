@@ -1,11 +1,11 @@
-# Arch Webcam Vehicle Count
+# Arches Webcam Vehicle Count
 
-This script fetches the NPS Arch webcam page, resolves the current webcam image, runs YOLO vehicle detection, and writes the latest result to a JSON artifact that can be committed to GitHub.
+This script fetches the NPS Arches webcam page, resolves the current webcam image, runs YOLO vehicle detection, and writes the latest result to a JSON artifact that can be committed to GitHub.
 
 ## What it does
 
 - Downloads the NPS webcam webpage
-- Finds the current Arch webcam JPG
+- Finds the current Arches webcam JPG
 - Runs YOLOv8 vehicle detection
 - Counts detected vehicles
 - Writes a structured JSON result file
@@ -90,7 +90,7 @@ The script can be configured with environment variables or CLI flags.
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `WEBCAM_PAGE_URL` | NPS Arch webcam page URL | The webpage to scan for the image |
+| `WEBCAM_PAGE_URL` | NPS Arches webcam page URL | The webpage to scan for the image |
 | `FALLBACK_IMAGE_URL` | `https://www.nps.gov/webcams-arch/arch_traffic.jpg` | Used if the page does not expose a direct image link |
 | `MODEL_PATH` | `yolov8x.pt` | YOLO model path |
 | `OUTPUT_PATH` | `arch_vehicle_count_latest.json` | Where to write the result JSON |
