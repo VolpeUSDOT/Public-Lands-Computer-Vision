@@ -2,14 +2,16 @@ from __future__ import annotations
 
 import argparse
 import base64
+import csv
 import json
 import os
 import time
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
+from zoneinfo import ZoneInfo
 
 os.environ.pop("OPENSSL_FORCE_FIPS_MODE", None)
 
@@ -26,7 +28,7 @@ DEFAULT_WEBCAM_PAGE_URL = (
 DEFAULT_FALLBACK_IMAGE_URL = "https://s94.ipcamlive.com/streams/5ey6dfot2hpuvzbce/snapshot.jpg"
 DEFAULT_MODEL_PATH = "yolov8x.pt"
 DEFAULT_BASE_OUTPUT_DIR = Path(__file__).resolve().parent.parent / "IP3" / "WCT"
-DEFAULT_ARCHIVE_OUTPUT_DIR = DEFAULT_BASE_OUTPUT_DIR / "archive"
+DEFAULT_ARCHIVE_OUTPUT_PATH = DEFAULT_BASE_OUTPUT_DIR / "archivefeed.csv"
 DEFAULT_FEED_OUTPUT_PATH = Path(__file__).resolve().parent / "wct_latest_feed.txt"
 DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH = Path(__file__).resolve().parent / "wct_latest_annotated.jpg"
 DEFAULT_GITHUB_REPOSITORY = "VolpeUSDOT/Public-Lands-Computer-Vision"
@@ -34,9 +36,7 @@ DEFAULT_GITHUB_BRANCH = "main"
 DEFAULT_GITHUB_JSON_PATH = "IP3/WCT/wct_vehicle_count_latest.json"
 DEFAULT_GITHUB_FEED_PATH = "IP3/WCT/wct_latest_feed.txt"
 DEFAULT_GITHUB_IMAGE_PATH = "IP3/WCT/wct_latest_annotated.jpg"
-DEFAULT_GITHUB_ARCHIVE_JSON_DIR = "IP3/WCT/archive"
-DEFAULT_GITHUB_ARCHIVE_FEED_DIR = "IP3/WCT/archive"
-DEFAULT_GITHUB_ARCHIVE_IMAGE_DIR = "IP3/WCT/archive"
+DEFAULT_GITHUB_ARCHIVE_CSV_PATH = "IP3/WCT/archivefeed.csv"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -45,6 +45,9 @@ DEFAULT_OUTPUT_PATH = DEFAULT_BASE_OUTPUT_DIR / "wct_vehicle_count_latest.json"
 DEFAULT_ENV_PATH = Path(__file__).resolve().parent / ".env"
 VEHICLE_CLASSES = [2, 3, 5, 7]
 DEFAULT_LOOP_INTERVAL_SECONDS = 50
+DEFAULT_TIMEZONE_NAME = "America/New_York"
+DEFAULT_ACTIVE_START_HOUR = 9
+DEFAULT_ACTIVE_END_HOUR = 21
 
 
 @dataclass(frozen=True)
@@ -60,9 +63,7 @@ class Config:
     github_json_path: str = DEFAULT_GITHUB_JSON_PATH
     github_feed_path: str = DEFAULT_GITHUB_FEED_PATH
     github_image_path: str = DEFAULT_GITHUB_IMAGE_PATH
-    github_archive_json_dir: str = DEFAULT_GITHUB_ARCHIVE_JSON_DIR
-    github_archive_feed_dir: str = DEFAULT_GITHUB_ARCHIVE_FEED_DIR
-    github_archive_image_dir: str = DEFAULT_GITHUB_ARCHIVE_IMAGE_DIR
+    github_archive_csv_path: str = DEFAULT_GITHUB_ARCHIVE_CSV_PATH
     github_token: Optional[str] = None
     publish_to_github: bool = False
     confidence: float = 0.50
@@ -70,7 +71,10 @@ class Config:
     image_size: int = 1280
     user_agent: str = DEFAULT_USER_AGENT
     loop_interval_seconds: int = DEFAULT_LOOP_INTERVAL_SECONDS
-    archive_output_dir: Path = DEFAULT_ARCHIVE_OUTPUT_DIR
+    archive_output_path: Path = DEFAULT_ARCHIVE_OUTPUT_PATH
+    timezone_name: str = DEFAULT_TIMEZONE_NAME
+    active_start_hour: int = DEFAULT_ACTIVE_START_HOUR
+    active_end_hour: int = DEFAULT_ACTIVE_END_HOUR
 
 
 @dataclass
@@ -79,6 +83,19 @@ class DetectionBox:
     class_name: str
     confidence: float
     xyxy: list[float]
+
+
+@dataclass
+class ArchiveRow:
+    timestamp_utc: str
+    vehicle_count: int
+    vehicle_index: int
+    vehicle_type: str
+    confidence: float
+    bbox_x1: float
+    bbox_y1: float
+    bbox_x2: float
+    bbox_y2: float
 
 
 @dataclass
@@ -117,9 +134,7 @@ def load_config() -> Config:
         github_json_path=os.getenv("GITHUB_JSON_PATH", DEFAULT_GITHUB_JSON_PATH),
         github_feed_path=os.getenv("GITHUB_FEED_PATH", DEFAULT_GITHUB_FEED_PATH),
         github_image_path=os.getenv("GITHUB_IMAGE_PATH", DEFAULT_GITHUB_IMAGE_PATH),
-        github_archive_json_dir=os.getenv("GITHUB_ARCHIVE_JSON_DIR", DEFAULT_GITHUB_ARCHIVE_JSON_DIR),
-        github_archive_feed_dir=os.getenv("GITHUB_ARCHIVE_FEED_DIR", DEFAULT_GITHUB_ARCHIVE_FEED_DIR),
-        github_archive_image_dir=os.getenv("GITHUB_ARCHIVE_IMAGE_DIR", DEFAULT_GITHUB_ARCHIVE_IMAGE_DIR),
+        github_archive_csv_path=os.getenv("GITHUB_ARCHIVE_CSV_PATH", DEFAULT_GITHUB_ARCHIVE_CSV_PATH),
         github_token=github_token,
         publish_to_github=publish_to_github,
         confidence=float(os.getenv("YOLO_CONFIDENCE", "0.50")),
@@ -127,7 +142,10 @@ def load_config() -> Config:
         image_size=int(os.getenv("YOLO_IMAGE_SIZE", "1280")),
         user_agent=os.getenv("USER_AGENT", DEFAULT_USER_AGENT),
         loop_interval_seconds=int(os.getenv("LOOP_INTERVAL_SECONDS", str(DEFAULT_LOOP_INTERVAL_SECONDS))),
-        archive_output_dir=Path(os.getenv("ARCHIVE_OUTPUT_DIR", str(DEFAULT_ARCHIVE_OUTPUT_DIR))).expanduser(),
+        archive_output_path=Path(os.getenv("ARCHIVE_OUTPUT_PATH", str(DEFAULT_ARCHIVE_OUTPUT_PATH))).expanduser(),
+        timezone_name=os.getenv("TIMEZONE_NAME", DEFAULT_TIMEZONE_NAME),
+        active_start_hour=int(os.getenv("ACTIVE_START_HOUR", str(DEFAULT_ACTIVE_START_HOUR))),
+        active_end_hour=int(os.getenv("ACTIVE_END_HOUR", str(DEFAULT_ACTIVE_END_HOUR))),
     )
 
 
@@ -141,6 +159,27 @@ def now_utc_iso() -> str:
 
 def archive_timestamp() -> str:
     return datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+
+def local_now(config: Config) -> datetime:
+    return datetime.now(ZoneInfo(config.timezone_name))
+
+
+def is_within_active_window(now: datetime, config: Config) -> bool:
+    start = now.replace(hour=config.active_start_hour, minute=0, second=0, microsecond=0)
+    end = now.replace(hour=config.active_end_hour, minute=0, second=0, microsecond=0)
+    return start <= now < end
+
+
+def seconds_until_active_window(now: datetime, config: Config) -> float:
+    start = now.replace(hour=config.active_start_hour, minute=0, second=0, microsecond=0)
+    end = now.replace(hour=config.active_end_hour, minute=0, second=0, microsecond=0)
+    if now < start:
+        return (start - now).total_seconds()
+    if now >= end:
+        next_start = (start + timedelta(days=1)).replace(tzinfo=now.tzinfo)
+        return (next_start - now).total_seconds()
+    return 0.0
 
 
 def load_env_file(env_path: Path = DEFAULT_ENV_PATH) -> None:
@@ -319,8 +358,92 @@ def result_to_feed_text(result: RunResult) -> str:
     return "\n".join(lines) + "\n"
 
 
-def archive_file_path(directory: Path, timestamp: str, suffix: str, stem: str) -> Path:
-    return directory / f"{stem}_{timestamp}{suffix}"
+def result_to_archive_rows(result: RunResult) -> list[ArchiveRow]:
+    rows: list[ArchiveRow] = []
+    vehicle_count = len(result.detections)
+    for index, detection in enumerate(result.detections, start=1):
+        x1, y1, x2, y2 = detection.xyxy
+        rows.append(
+            ArchiveRow(
+                timestamp_utc=result.timestamp_utc,
+                vehicle_count=vehicle_count,
+                vehicle_index=index,
+                vehicle_type=detection.class_name,
+                confidence=detection.confidence,
+                bbox_x1=x1,
+                bbox_y1=y1,
+                bbox_x2=x2,
+                bbox_y2=y2,
+            )
+        )
+    if not rows:
+        rows.append(
+            ArchiveRow(
+                timestamp_utc=result.timestamp_utc,
+                vehicle_count=0,
+                vehicle_index=0,
+                vehicle_type="none",
+                confidence=0.0,
+                bbox_x1=0.0,
+                bbox_y1=0.0,
+                bbox_x2=0.0,
+                bbox_y2=0.0,
+            )
+        )
+    return rows
+
+
+def result_to_archive_csv_rows(result: RunResult) -> list[dict[str, Any]]:
+    return [archive_row_to_dict(row) for row in result_to_archive_rows(result)]
+
+
+def archive_csv_header() -> list[str]:
+    return [
+        "timestamp_utc",
+        "vehicle_count",
+        "vehicle_index",
+        "vehicle_type",
+        "confidence",
+        "bbox_x1",
+        "bbox_y1",
+        "bbox_x2",
+        "bbox_y2",
+    ]
+
+
+def archive_row_to_dict(row: ArchiveRow) -> dict[str, Any]:
+    return asdict(row)
+
+
+def archive_rows_to_csv_text(rows: list[ArchiveRow]) -> str:
+    from io import StringIO
+
+    buffer = StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=archive_csv_header())
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(archive_row_to_dict(row))
+    return buffer.getvalue()
+
+
+def csv_text_to_rows(csv_text: str) -> list[dict[str, str]]:
+    from io import StringIO
+
+    if not csv_text.strip():
+        return []
+    buffer = StringIO(csv_text)
+    return list(csv.DictReader(buffer))
+
+
+def rows_to_csv_text(rows: list[dict[str, Any]]) -> str:
+    from io import StringIO
+
+    buffer = StringIO()
+    writer = csv.DictWriter(buffer, fieldnames=archive_csv_header())
+    writer.writeheader()
+    for row in rows:
+        writer.writerow(row)
+    return buffer.getvalue()
 
 
 def write_result(result: RunResult, output_path: Path) -> Path:
@@ -343,26 +466,17 @@ def write_annotated_image(img: np.ndarray, output_path: Path) -> Path:
     return output_path
 
 
-def write_archive_artifacts(result: RunResult, annotated_image: Optional[np.ndarray], config: Config, timestamp: str) -> list[Path]:
-    written_paths: list[Path] = []
-    archive_dir = config.archive_output_dir
-    archive_dir.mkdir(parents=True, exist_ok=True)
-
-    json_path = archive_file_path(archive_dir, timestamp, ".json", "wct_vehicle_count")
-    json_path.write_text(result_to_json_text(result), encoding="utf-8")
-    written_paths.append(json_path)
-
-    feed_path = archive_file_path(archive_dir, timestamp, ".txt", "wct_latest_feed")
-    feed_path.write_text(result_to_feed_text(result), encoding="utf-8")
-    written_paths.append(feed_path)
-
-    if annotated_image is not None:
-        image_path = archive_file_path(archive_dir, timestamp, ".jpg", "wct_latest_annotated")
-        if not cv2.imwrite(str(image_path), annotated_image):
-            raise ValueError(f"Failed to write archived annotated image to {image_path}")
-        written_paths.append(image_path)
-
-    return written_paths
+def append_archive_csv(result: RunResult, output_path: Path) -> Path:
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    rows = result_to_archive_rows(result)
+    file_exists = output_path.exists() and output_path.stat().st_size > 0
+    with output_path.open("a", encoding="utf-8", newline="") as handle:
+        writer = csv.DictWriter(handle, fieldnames=archive_csv_header())
+        if not file_exists:
+            writer.writeheader()
+        for row in rows:
+            writer.writerow(archive_row_to_dict(row))
+    return output_path
 
 
 def github_contents_api_url(repository: str, file_path: str) -> str:
@@ -505,28 +619,67 @@ def publish_annotated_image_to_github(image: np.ndarray, config: Config) -> tupl
     )
 
 
-def publish_archive_text_to_github(content_text: str, repository: str, branch: str, directory: str, token: str, file_name: str, message: str) -> tuple[bool, str]:
-    if not token:
+def publish_archive_csv_to_github(csv_text: str, config: Config) -> tuple[bool, str]:
+    if not config.github_token:
         return False, "Skipped GitHub archive publish: no GITHUB_TOKEN or GH_TOKEN set"
-    return publish_text_to_github(content_text, repository, branch, f"{directory.rstrip('/')}/{file_name}", token, message)
+    headers = get_github_headers(config.github_token)
+    url = github_contents_api_url(config.github_repository, config.github_archive_csv_path)
+
+    existing_text = ""
+    current_sha: Optional[str] = None
+    try:
+        response = requests.get(url, headers=headers, params={"ref": config.github_branch}, timeout=10)
+        if response.status_code == 200:
+            payload = response.json()
+            current_sha = payload.get("sha")
+            existing_content = payload.get("content")
+            encoding = payload.get("encoding")
+            if existing_content and encoding == "base64":
+                existing_text = base64.b64decode(existing_content).decode("utf-8")
+        elif response.status_code != 404:
+            response.raise_for_status()
+    except requests.RequestException as exc:
+        return False, f"Failed to inspect GitHub archive CSV {config.github_archive_csv_path}: {exc}"
+
+    existing_rows = csv_text_to_rows(existing_text)
+    incoming_rows = csv_text_to_rows(csv_text)
+    combined_rows = existing_rows + incoming_rows
+    combined_text = rows_to_csv_text(combined_rows)
+
+    body: dict[str, Any] = {
+        "message": "Append WCT archive CSV",
+        "content": base64.b64encode(combined_text.encode("utf-8")).decode("ascii"),
+        "branch": config.github_branch,
+    }
+    if current_sha:
+        body["sha"] = current_sha
+
+    try:
+        response = requests.put(url, headers=headers, json=body, timeout=20)
+        response.raise_for_status()
+    except requests.RequestException as exc:
+        return False, f"Failed to publish GitHub archive CSV {config.github_archive_csv_path}: {exc}"
+
+    return True, f"Published {config.github_repository}/{config.github_archive_csv_path} on {config.github_branch}"
 
 
-def publish_archive_image_to_github(image: np.ndarray, repository: str, branch: str, directory: str, token: str, file_name: str, message: str) -> tuple[bool, str]:
-    if not token:
-        return False, "Skipped GitHub archive publish: no GITHUB_TOKEN or GH_TOKEN set"
-    return publish_image_to_github(image, repository, branch, f"{directory.rstrip('/')}/{file_name}", token, message)
+def archive_csv_rows_to_text(rows: list[ArchiveRow]) -> str:
+    return archive_rows_to_csv_text(rows)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Count vehicles in the Willow Creek Trail Parking Lot webcam image")
     parser.add_argument("--output", type=Path, default=None, help="Override output JSON path")
     parser.add_argument("--feed-output", type=Path, default=None, help="Override local feed text output path")
-    parser.add_argument("--archive-output-dir", type=Path, default=None, help="Override local archive output directory")
+    parser.add_argument("--archive-output-path", type=Path, default=None, help="Override local archive CSV output path")
     parser.add_argument("--model", default=None, help="Override YOLO model path")
     parser.add_argument("--confidence", type=float, default=None, help="Override YOLO confidence threshold")
     parser.add_argument("--iou", type=float, default=None, help="Override YOLO IOU threshold")
     parser.add_argument("--imgsz", type=int, default=None, help="Override YOLO image size")
     parser.add_argument("--interval", type=int, default=None, help="Seconds to wait between detection runs")
+    parser.add_argument("--timezone", default=None, help="Override the active window timezone")
+    parser.add_argument("--active-start-hour", type=int, default=None, help="Override active window start hour")
+    parser.add_argument("--active-end-hour", type=int, default=None, help="Override active window end hour")
     parser.add_argument("--once", action="store_true", help="Run one detection cycle and exit")
     return parser.parse_args()
 
@@ -544,9 +697,7 @@ def build_config(args: argparse.Namespace) -> Config:
         github_json_path=config.github_json_path,
         github_feed_path=config.github_feed_path,
         github_image_path=config.github_image_path,
-        github_archive_json_dir=config.github_archive_json_dir,
-        github_archive_feed_dir=config.github_archive_feed_dir,
-        github_archive_image_dir=config.github_archive_image_dir,
+        github_archive_csv_path=config.github_archive_csv_path,
         github_token=config.github_token,
         publish_to_github=config.publish_to_github,
         confidence=args.confidence if args.confidence is not None else config.confidence,
@@ -554,12 +705,14 @@ def build_config(args: argparse.Namespace) -> Config:
         image_size=args.imgsz if args.imgsz is not None else config.image_size,
         user_agent=config.user_agent,
         loop_interval_seconds=args.interval if args.interval is not None else config.loop_interval_seconds,
-        archive_output_dir=args.archive_output_dir or config.archive_output_dir,
+        archive_output_path=args.archive_output_path or config.archive_output_path,
+        timezone_name=args.timezone or config.timezone_name,
+        active_start_hour=args.active_start_hour if args.active_start_hour is not None else config.active_start_hour,
+        active_end_hour=args.active_end_hour if args.active_end_hour is not None else config.active_end_hour,
     )
 
 
 def run_once(config: Config) -> int:
-    timestamp = archive_timestamp()
     result, annotated_image = run_detection_with_image(config)
     output_path = write_result(result, config.output_path)
     json_text = result_to_json_text(result)
@@ -569,7 +722,7 @@ def run_once(config: Config) -> int:
     if annotated_image is not None:
         annotated_image_output_path = write_annotated_image(annotated_image, config.annotated_image_output_path)
 
-    archive_paths = write_archive_artifacts(result, annotated_image, config, timestamp)
+    archive_path = append_archive_csv(result, config.archive_output_path)
 
     publish_messages: list[str] = []
     publish_ok = True
@@ -581,61 +734,25 @@ def run_once(config: Config) -> int:
         if annotated_image is not None:
             image_published, image_message = publish_annotated_image_to_github(annotated_image, config)
 
-        archive_json_name = archive_file_path(Path(""), timestamp, ".json", "wct_vehicle_count").name
-        archive_feed_name = archive_file_path(Path(""), timestamp, ".txt", "wct_latest_feed").name
-        archive_image_name = archive_file_path(Path(""), timestamp, ".jpg", "wct_latest_annotated").name
-        archive_json_published, archive_json_message = publish_archive_text_to_github(
-            json_text,
-            config.github_repository,
-            config.github_branch,
-            config.github_archive_json_dir,
-            config.github_token or "",
-            archive_json_name,
-            "Update WCT archived vehicle count JSON",
-        )
-        archive_feed_published, archive_feed_message = publish_archive_text_to_github(
-            feed_text,
-            config.github_repository,
-            config.github_branch,
-            config.github_archive_feed_dir,
-            config.github_token or "",
-            archive_feed_name,
-            "Update WCT archived feed text",
-        )
-        archive_image_published = True
-        archive_image_message = None
-        if annotated_image is not None:
-            archive_image_published, archive_image_message = publish_archive_image_to_github(
-                annotated_image,
-                config.github_repository,
-                config.github_branch,
-                config.github_archive_image_dir,
-                config.github_token or "",
-                archive_image_name,
-                "Update WCT archived annotated image",
-            )
+        archive_csv_text = archive_rows_to_csv_text(result_to_archive_rows(result))
+        archive_csv_published, archive_csv_message = publish_archive_csv_to_github(archive_csv_text, config)
         publish_ok = (
             json_published
             and feed_published
             and image_published
-            and archive_json_published
-            and archive_feed_published
-            and archive_image_published
+            and archive_csv_published
         )
         publish_messages.extend([json_message, feed_message])
         if image_message:
             publish_messages.append(image_message)
-        publish_messages.extend([archive_json_message, archive_feed_message])
-        if archive_image_message:
-            publish_messages.append(archive_image_message)
+        publish_messages.append(archive_csv_message)
 
     print(json_text.rstrip())
     print(f"Wrote result to {output_path}")
     print(f"Wrote feed to {feed_output_path}")
     if annotated_image_output_path:
         print(f"Wrote annotated image to {annotated_image_output_path}")
-    for archive_path in archive_paths:
-        print(f"Wrote archive artifact to {archive_path}")
+    print(f"Appended archive CSV row(s) to {archive_path}")
     for publish_message in publish_messages:
         print(publish_message)
     return 0 if result.status == "ok" and publish_ok else 1
@@ -648,6 +765,12 @@ def main() -> int:
         return run_once(config)
 
     while True:
+        current_time = local_now(config)
+        if not is_within_active_window(current_time, config):
+            sleep_seconds = max(1, int(seconds_until_active_window(current_time, config)))
+            print(f"Outside active window; sleeping {sleep_seconds} seconds")
+            time.sleep(sleep_seconds)
+            continue
         exit_code = run_once(config)
         if exit_code != 0:
             print(f"Run completed with exit code {exit_code}; waiting {config.loop_interval_seconds} seconds before retrying")
