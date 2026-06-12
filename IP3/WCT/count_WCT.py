@@ -5,6 +5,7 @@ import base64
 import csv
 import json
 import os
+import re
 import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
@@ -207,6 +208,7 @@ def load_env_file(env_path: Path = DEFAULT_ENV_PATH) -> None:
 
 
 def resolve_image_url(page_html: bytes, fallback_image_url: str) -> str:
+    page_text = page_html.decode("utf-8", errors="ignore")
     soup = BeautifulSoup(page_html, "html.parser")
     for img in soup.find_all("img"):
         src = img.get("src", "")
@@ -214,6 +216,14 @@ def resolve_image_url(page_html: bytes, fallback_image_url: str) -> str:
             if src.startswith("/"):
                 return "https://www.nps.gov" + src
             return src
+
+    address_match = re.search(r"var\s+address\s*=\s*['\"](https?://[^'\"]+/)['\"]", page_text)
+    streamid_match = re.search(r"var\s+streamid\s*=\s*['\"]([^'\"]+)['\"]", page_text)
+    if address_match and streamid_match:
+        address = address_match.group(1)
+        streamid = streamid_match.group(1)
+        return f"{address.rstrip('/')}/streams/{streamid}/snapshot.jpg"
+
     return fallback_image_url
 
 
@@ -667,7 +677,7 @@ def archive_csv_rows_to_text(rows: list[ArchiveRow]) -> str:
     return archive_rows_to_csv_text(rows)
 
 
-def parse_args() -> argparse.Namespace:
+def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Count vehicles in the Willow Creek Trail Parking Lot webcam image")
     parser.add_argument("--output", type=Path, default=None, help="Override output JSON path")
     parser.add_argument("--feed-output", type=Path, default=None, help="Override local feed text output path")
@@ -681,7 +691,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--active-start-hour", type=int, default=None, help="Override active window start hour")
     parser.add_argument("--active-end-hour", type=int, default=None, help="Override active window end hour")
     parser.add_argument("--once", action="store_true", help="Run one detection cycle and exit")
-    return parser.parse_args()
+    args, _unknown = parser.parse_known_args(argv)
+    return args
 
 
 def build_config(args: argparse.Namespace) -> Config:
