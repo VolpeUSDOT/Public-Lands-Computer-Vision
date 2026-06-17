@@ -7,6 +7,7 @@ import json
 import os
 import re
 import time
+import tempfile
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timedelta, timezone
 from functools import lru_cache
@@ -23,10 +24,10 @@ from bs4 import BeautifulSoup
 from ultralytics import YOLO
 
 
-DEFAULT_WEBCAM_PAGE_URL = (
-    "https://www.ipcamlive.com/player/player.php?alias=willowcreektrail&autoplay=1&&token=MCpm4WUQL72bg2gKA1BRIqdB9EsmbIts8rCaBtIiZ7k%3D"
-)
+DEFAULT_IPCAMLIVE_LANDING_PAGE_URL = "https://www.ipcamlive.com/willowcreektrail"
+DEFAULT_WEBCAM_PAGE_URL = DEFAULT_IPCAMLIVE_LANDING_PAGE_URL
 DEFAULT_FALLBACK_IMAGE_URL = "https://s94.ipcamlive.com/streams/5ey6dfot2hpuvzbce/snapshot.jpg"
+IPCAMLIVE_STREAM_STATE_PATH = "/ajax/getcamerastreamstate.php"
 DEFAULT_MODEL_PATH = "yolov8x.pt"
 DEFAULT_BASE_OUTPUT_DIR = Path(__file__).resolve().parent.parent / "IP3" / "WCT"
 DEFAULT_ARCHIVE_OUTPUT_PATH = DEFAULT_BASE_OUTPUT_DIR / "archivefeed.csv"
@@ -49,6 +50,8 @@ DEFAULT_LOOP_INTERVAL_SECONDS = 50
 DEFAULT_TIMEZONE_NAME = "America/New_York"
 DEFAULT_ACTIVE_START_HOUR = 9
 DEFAULT_ACTIVE_END_HOUR = 21
+TRACK_MATCH_IOU_THRESHOLD = 0.30
+TRACK_MAX_MISSED_SECONDS = 180
 
 
 @dataclass(frozen=True)
@@ -107,9 +110,146 @@ class RunResult:
     image_url: Optional[str] = None
     model_path: str = DEFAULT_MODEL_PATH
     vehicle_count: int = 0
+    tracked_vehicle_count: int = 0
+    average_vehicle_dwell_seconds: Optional[float] = None
     detections: list[DetectionBox] = field(default_factory=list)
     message: Optional[str] = None
     error: Optional[str] = None
+
+
+@dataclass
+class VehicleTrack:
+    track_id: int
+    class_id: int
+    class_name: str
+    first_seen_ts: float
+    last_seen_ts: float
+    confidence: float
+    xyxy: list[float]
+    missed_count: int = 0
+
+
+@dataclass
+class TrackerSummary:
+    active_vehicle_count: int
+    average_vehicle_dwell_seconds: Optional[float]
+    completed_vehicle_count: int
+
+
+class VehicleTracker:
+    def __init__(self) -> None:
+        self._next_track_id = 1
+        self._active_tracks: dict[int, VehicleTrack] = {}
+        self._completed_dwell_seconds: list[float] = []
+
+    @staticmethod
+    def _track_iou(track: VehicleTrack, detection: DetectionBox) -> float:
+        return iou_xyxy(track.xyxy, detection.xyxy)
+
+    def _finalize_track(self, track_id: int) -> None:
+        track = self._active_tracks.pop(track_id, None)
+        if track is None:
+            return
+        dwell_seconds = max(0.0, track.last_seen_ts - track.first_seen_ts)
+        self._completed_dwell_seconds.append(dwell_seconds)
+
+    def update(self, detections: list[DetectionBox], observed_ts: float) -> TrackerSummary:
+        if self._active_tracks:
+            stale_track_ids = [
+                track_id
+                for track_id, track in self._active_tracks.items()
+                if observed_ts - track.last_seen_ts >= TRACK_MAX_MISSED_SECONDS
+            ]
+            for track_id in stale_track_ids:
+                self._finalize_track(track_id)
+
+        candidate_matches: list[tuple[float, int, int]] = []
+        active_track_items = list(self._active_tracks.items())
+        for track_index, (_track_id, track) in enumerate(active_track_items):
+            for detection_index, detection in enumerate(detections):
+                if track.class_id != detection.class_id:
+                    continue
+                score = self._track_iou(track, detection)
+                if score >= TRACK_MATCH_IOU_THRESHOLD:
+                    candidate_matches.append((score, track_index, detection_index))
+
+        candidate_matches.sort(reverse=True)
+        matched_tracks: set[int] = set()
+        matched_detections: set[int] = set()
+
+        for _score, track_index, detection_index in candidate_matches:
+            if track_index in matched_tracks or detection_index in matched_detections:
+                continue
+            track_id, track = active_track_items[track_index]
+            detection = detections[detection_index]
+            track.class_id = detection.class_id
+            track.class_name = detection.class_name
+            track.confidence = detection.confidence
+            track.xyxy = list(detection.xyxy)
+            track.last_seen_ts = observed_ts
+            track.missed_count = 0
+            matched_tracks.add(track_index)
+            matched_detections.add(detection_index)
+
+        for detection_index, detection in enumerate(detections):
+            if detection_index in matched_detections:
+                continue
+            self._active_tracks[self._next_track_id] = VehicleTrack(
+                track_id=self._next_track_id,
+                class_id=detection.class_id,
+                class_name=detection.class_name,
+                first_seen_ts=observed_ts,
+                last_seen_ts=observed_ts,
+                confidence=detection.confidence,
+                xyxy=list(detection.xyxy),
+            )
+            self._next_track_id += 1
+
+        for track_index, (track_id, track) in enumerate(active_track_items):
+            if track_index in matched_tracks:
+                continue
+            track.missed_count += 1
+            if observed_ts - track.last_seen_ts >= TRACK_MAX_MISSED_SECONDS:
+                self._finalize_track(track_id)
+
+        average_vehicle_dwell_seconds = self.average_vehicle_dwell_seconds(observed_ts)
+        return TrackerSummary(
+            active_vehicle_count=len(self._active_tracks),
+            average_vehicle_dwell_seconds=average_vehicle_dwell_seconds,
+            completed_vehicle_count=len(self._completed_dwell_seconds),
+        )
+
+    def average_vehicle_dwell_seconds(self, observed_ts: float) -> Optional[float]:
+        durations = list(self._completed_dwell_seconds)
+        for track in self._active_tracks.values():
+            durations.append(max(0.0, observed_ts - track.first_seen_ts))
+        if not durations:
+            return None
+        return sum(durations) / len(durations)
+
+
+_VEHICLE_TRACKER = VehicleTracker()
+
+
+def iou_xyxy(box_a: list[float], box_b: list[float]) -> float:
+    ax1, ay1, ax2, ay2 = box_a
+    bx1, by1, bx2, by2 = box_b
+
+    inter_x1 = max(ax1, bx1)
+    inter_y1 = max(ay1, by1)
+    inter_x2 = min(ax2, bx2)
+    inter_y2 = min(ay2, by2)
+
+    inter_width = max(0.0, inter_x2 - inter_x1)
+    inter_height = max(0.0, inter_y2 - inter_y1)
+    inter_area = inter_width * inter_height
+
+    area_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+    area_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+    union_area = area_a + area_b - inter_area
+    if union_area <= 0.0:
+        return 0.0
+    return inter_area / union_area
 
 
 def load_config() -> Config:
@@ -121,8 +261,6 @@ def load_config() -> Config:
     annotated_image_output_path = Path(os.getenv("ANNOTATED_IMAGE_OUTPUT_PATH", str(DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH))).expanduser()
     github_token = os.getenv("GITHUB_TOKEN") or os.getenv("GH_TOKEN")
     publish_to_github = os.getenv("PUBLISH_TO_GITHUB", "").strip().lower() in {"1", "true", "yes", "on"}
-    if github_token and not os.getenv("PUBLISH_TO_GITHUB"):
-        publish_to_github = True
     return Config(
         webcam_page_url=os.getenv("WEBCAM_PAGE_URL", DEFAULT_WEBCAM_PAGE_URL),
         fallback_image_url=os.getenv("FALLBACK_IMAGE_URL", DEFAULT_FALLBACK_IMAGE_URL),
@@ -152,6 +290,83 @@ def load_config() -> Config:
 
 def build_headers(user_agent: str) -> dict[str, str]:
     return {"User-Agent": user_agent}
+
+
+def build_ipcamlive_snapshot_url(address: str, stream_id: str) -> str:
+    return f"{address.rstrip('/')}/streams/{stream_id}/snapshot.jpg"
+
+
+def extract_ipcamlive_alias(page_text: str, page_url: str) -> Optional[str]:
+    alias_match = re.search(r"var\s+alias\s*=\s*['\"]([^'\"]+)['\"]", page_text)
+    if alias_match:
+        return alias_match.group(1)
+
+    query_match = re.search(r"[?&]alias=([^&]+)", page_url)
+    if query_match:
+        return query_match.group(1)
+
+    path_match = re.search(r"ipcamlive\.com/([^/?#]+)", page_url)
+    if path_match:
+        candidate = path_match.group(1).strip()
+        if candidate and candidate not in {"player", "ajax"}:
+            return candidate
+
+    return None
+
+
+def parse_ipcamlive_stream_state(response: requests.Response) -> Optional[dict[str, Any]]:
+    text = response.text.strip()
+    if not text:
+        return None
+
+    try:
+        parsed = response.json()
+    except ValueError:
+        try:
+            parsed = json.loads(text)
+        except json.JSONDecodeError:
+            match = re.search(r"\{.*\}", text, re.DOTALL)
+            if not match:
+                return None
+            try:
+                parsed = json.loads(match.group(0))
+            except json.JSONDecodeError:
+                return None
+
+    return parsed if isinstance(parsed, dict) else None
+
+
+def resolve_ipcamlive_snapshot_url(alias: str, headers: dict[str, str]) -> Optional[str]:
+    state_url = f"https://www.ipcamlive.com{IPCAMLIVE_STREAM_STATE_PATH}"
+    response = requests.get(state_url, headers=headers, params={"cameraalias": alias}, timeout=10)
+    response.raise_for_status()
+
+    data = parse_ipcamlive_stream_state(response)
+    if not data:
+        return None
+
+    details = data.get("details") or {}
+    stream_id = details.get("streamid")
+    address = details.get("address")
+    if stream_id and address:
+        return build_ipcamlive_snapshot_url(address, stream_id)
+    return None
+
+
+def resolve_ipcamlive_player_url(alias: str, headers: dict[str, str]) -> Optional[str]:
+    landing_url = f"https://www.ipcamlive.com/{alias}"
+    response = requests.get(landing_url, headers=headers, timeout=10)
+    response.raise_for_status()
+
+    page_text = response.text
+    token_match = re.search(r"var\s+token\s*=\s*['\"]([^'\"]+)['\"]", page_text)
+    if not token_match:
+        return None
+
+    token = token_match.group(1)
+    player_match = re.search(r"player/player\.php\?alias=([^&'\"]+)", page_text)
+    player_alias = player_match.group(1) if player_match else alias
+    return f"https://www.ipcamlive.com/player/player.php?alias={player_alias}&autoplay=1&&token={requests.utils.quote(token, safe='')}"
 
 
 def now_utc_iso() -> str:
@@ -207,9 +422,38 @@ def load_env_file(env_path: Path = DEFAULT_ENV_PATH) -> None:
         os.environ[key] = value
 
 
-def resolve_image_url(page_html: bytes, fallback_image_url: str) -> str:
+def resolve_image_url(page_html: bytes, page_url: str, fallback_image_url: str, headers: dict[str, str]) -> Optional[str]:
     page_text = page_html.decode("utf-8", errors="ignore")
     soup = BeautifulSoup(page_html, "html.parser")
+
+    if "ipcamlive.com" in page_url:
+        alias = extract_ipcamlive_alias(page_text, page_url)
+        if alias:
+            snapshot_url = resolve_ipcamlive_snapshot_url(alias, headers)
+            if snapshot_url:
+                return snapshot_url
+
+            player_url = resolve_ipcamlive_player_url(alias, headers)
+            if player_url:
+                return player_url
+
+            return fallback_image_url
+
+        iframe_match = re.search(r"<iframe[^>]+src=[\"']([^\"']*player/player\.php[^\"']*)[\"']", page_text, re.IGNORECASE)
+        if iframe_match:
+            iframe_src = iframe_match.group(1)
+            iframe_alias = extract_ipcamlive_alias("", iframe_src)
+            if iframe_alias:
+                snapshot_url = resolve_ipcamlive_snapshot_url(iframe_alias, headers)
+                if snapshot_url:
+                    return snapshot_url
+
+                player_url = resolve_ipcamlive_player_url(iframe_alias, headers)
+                if player_url:
+                    return player_url
+
+        return None
+
     for img in soup.find_all("img"):
         src = img.get("src", "")
         if ".jpg" in src.lower() and ("webcam" in src.lower() or "arch" in src.lower()):
@@ -222,9 +466,55 @@ def resolve_image_url(page_html: bytes, fallback_image_url: str) -> str:
     if address_match and streamid_match:
         address = address_match.group(1)
         streamid = streamid_match.group(1)
-        return f"{address.rstrip('/')}/streams/{streamid}/snapshot.jpg"
+        return build_ipcamlive_snapshot_url(address, streamid)
 
     return fallback_image_url
+
+
+def resolve_writable_output_path(output_path: Path) -> Path:
+    """Return a path we can write to, falling back to a temp location if needed."""
+
+    try:
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+        return output_path
+    except (PermissionError, OSError):
+        fallback_path = Path(tempfile.gettempdir()) / "wct" / output_path.name
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        return fallback_path
+
+
+def try_write_text(output_path: Path, content: str) -> Path:
+    writable_path = resolve_writable_output_path(output_path)
+    try:
+        writable_path.write_text(content, encoding="utf-8")
+        return writable_path
+    except (PermissionError, OSError):
+        fallback_path = Path(tempfile.gettempdir()) / "wct" / writable_path.name
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        fallback_path.write_text(content, encoding="utf-8")
+        return fallback_path
+
+
+def try_append_archive_rows(output_path: Path, rows: list[ArchiveRow]) -> Path:
+    writable_path = resolve_writable_output_path(output_path)
+
+    def _append(path: Path) -> None:
+        file_exists = path.exists() and path.stat().st_size > 0
+        with path.open("a", encoding="utf-8", newline="") as handle:
+            writer = csv.DictWriter(handle, fieldnames=archive_csv_header())
+            if not file_exists:
+                writer.writeheader()
+            for row in rows:
+                writer.writerow(archive_row_to_dict(row))
+
+    try:
+        _append(writable_path)
+        return writable_path
+    except (PermissionError, OSError):
+        fallback_path = Path(tempfile.gettempdir()) / "wct" / writable_path.name
+        fallback_path.parent.mkdir(parents=True, exist_ok=True)
+        _append(fallback_path)
+        return fallback_path
 
 
 def fetch_bytes(url: str, headers: dict[str, str], timeout: int = 10) -> requests.Response:
@@ -278,7 +568,28 @@ def run_detection_with_image(config: Config) -> tuple[RunResult, Optional[np.nda
 
     try:
         page_response = fetch_bytes(config.webcam_page_url, headers=headers)
-        image_url = resolve_image_url(page_response.content, config.fallback_image_url)
+        image_url = resolve_image_url(page_response.content, config.webcam_page_url, config.fallback_image_url, headers)
+
+        if not image_url and "ipcamlive.com" in config.webcam_page_url:
+            alias = extract_ipcamlive_alias(page_response.text, config.webcam_page_url)
+            if alias:
+                image_url = resolve_ipcamlive_snapshot_url(alias, headers) or resolve_ipcamlive_player_url(alias, headers)
+
+        if not image_url:
+            image_url = config.fallback_image_url
+
+        if "/player/player.php" in image_url:
+            # Some IPCamLive pages only expose an iframe player, so chase one more hop.
+            player_response = fetch_bytes(image_url, headers=headers)
+            iframe_match = re.search(r"<iframe[^>]+src=[\"']([^\"']+)[\"']", player_response.text, re.IGNORECASE)
+            if iframe_match:
+                image_url = iframe_match.group(1)
+            else:
+                image_url = None
+
+        if not image_url:
+            image_url = config.fallback_image_url
+
         img = download_image(image_url, headers=headers)
 
         model = load_model(config.model_path)
@@ -292,6 +603,7 @@ def run_detection_with_image(config: Config) -> tuple[RunResult, Optional[np.nda
         )
 
         detections = serialize_detections(results[0]) if results else []
+        tracker_summary = _VEHICLE_TRACKER.update(detections, datetime.now(timezone.utc).timestamp())
         annotated_image = annotate_image(img, results)
         return (
             RunResult(
@@ -301,8 +613,10 @@ def run_detection_with_image(config: Config) -> tuple[RunResult, Optional[np.nda
                 image_url=image_url,
                 model_path=config.model_path,
                 vehicle_count=len(detections),
+                tracked_vehicle_count=tracker_summary.active_vehicle_count,
+                average_vehicle_dwell_seconds=tracker_summary.average_vehicle_dwell_seconds,
                 detections=detections,
-                message=f"Detected {len(detections)} vehicles",
+                message=f"Detected {len(detections)} vehicles; tracking {tracker_summary.active_vehicle_count} active vehicles",
             ),
             annotated_image,
         )
@@ -328,7 +642,7 @@ def annotate_image(img: np.ndarray, results: Any) -> np.ndarray:
 def result_to_dict(result: RunResult) -> dict[str, Any]:
     payload = asdict(result)
     payload["detections"] = [asdict(detection) for detection in result.detections]
-    payload["output_schema"] = "wct_vehicle_count_v1"
+    payload["output_schema"] = "wct_vehicle_count_v2"
     return payload
 
 
@@ -345,6 +659,8 @@ def result_to_feed_text(result: RunResult) -> str:
         f"image_url: {result.image_url or ''}",
         f"model_path: {result.model_path}",
         f"vehicle_count: {result.vehicle_count}",
+        f"tracked_vehicle_count: {result.tracked_vehicle_count}",
+        f"average_vehicle_dwell_seconds: {result.average_vehicle_dwell_seconds if result.average_vehicle_dwell_seconds is not None else ''}",
     ]
 
     if result.message:
@@ -364,7 +680,7 @@ def result_to_feed_text(result: RunResult) -> str:
     else:
         lines.append("detections: none")
 
-    lines.append("output_schema: wct_vehicle_count_v1")
+    lines.append("output_schema: wct_vehicle_count_v2")
     return "\n".join(lines) + "\n"
 
 
@@ -457,36 +773,27 @@ def rows_to_csv_text(rows: list[dict[str, Any]]) -> str:
 
 
 def write_result(result: RunResult, output_path: Path) -> Path:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    output_path.write_text(result_to_json_text(result), encoding="utf-8")
-    return output_path
+    return try_write_text(output_path, result_to_json_text(result))
 
 
 def write_feed(result: RunResult, output_path: Path) -> Path:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    feed_text = result_to_feed_text(result)
-    output_path.write_text(feed_text, encoding="utf-8")
-    return output_path
+    return try_write_text(output_path, result_to_feed_text(result))
 
 
 def write_annotated_image(img: np.ndarray, output_path: Path) -> Path:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    if not cv2.imwrite(str(output_path), img):
+    writable_path = resolve_writable_output_path(output_path)
+    if cv2.imwrite(str(writable_path), img):
+        return writable_path
+
+    fallback_path = Path(tempfile.gettempdir()) / "wct" / writable_path.name
+    fallback_path.parent.mkdir(parents=True, exist_ok=True)
+    if not cv2.imwrite(str(fallback_path), img):
         raise ValueError(f"Failed to write annotated image to {output_path}")
-    return output_path
+    return fallback_path
 
 
 def append_archive_csv(result: RunResult, output_path: Path) -> Path:
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-    rows = result_to_archive_rows(result)
-    file_exists = output_path.exists() and output_path.stat().st_size > 0
-    with output_path.open("a", encoding="utf-8", newline="") as handle:
-        writer = csv.DictWriter(handle, fieldnames=archive_csv_header())
-        if not file_exists:
-            writer.writeheader()
-        for row in rows:
-            writer.writerow(archive_row_to_dict(row))
-    return output_path
+    return try_append_archive_rows(output_path, result_to_archive_rows(result))
 
 
 def github_contents_api_url(repository: str, file_path: str) -> str:
@@ -725,15 +1032,8 @@ def build_config(args: argparse.Namespace) -> Config:
 
 def run_once(config: Config) -> int:
     result, annotated_image = run_detection_with_image(config)
-    output_path = write_result(result, config.output_path)
     json_text = result_to_json_text(result)
-    feed_output_path = write_feed(result, config.feed_output_path)
     feed_text = result_to_feed_text(result)
-    annotated_image_output_path = None
-    if annotated_image is not None:
-        annotated_image_output_path = write_annotated_image(annotated_image, config.annotated_image_output_path)
-
-    archive_path = append_archive_csv(result, config.archive_output_path)
 
     publish_messages: list[str] = []
     publish_ok = True
@@ -757,13 +1057,22 @@ def run_once(config: Config) -> int:
         if image_message:
             publish_messages.append(image_message)
         publish_messages.append(archive_csv_message)
+    else:
+        output_path = write_result(result, config.output_path)
+        feed_output_path = write_feed(result, config.feed_output_path)
+        annotated_image_output_path = None
+        if annotated_image is not None:
+            annotated_image_output_path = write_annotated_image(annotated_image, config.annotated_image_output_path)
+
+        archive_path = append_archive_csv(result, config.archive_output_path)
+
+        print(f"Wrote result to {output_path}")
+        print(f"Wrote feed to {feed_output_path}")
+        if annotated_image_output_path:
+            print(f"Wrote annotated image to {annotated_image_output_path}")
+        print(f"Appended archive CSV row(s) to {archive_path}")
 
     print(json_text.rstrip())
-    print(f"Wrote result to {output_path}")
-    print(f"Wrote feed to {feed_output_path}")
-    if annotated_image_output_path:
-        print(f"Wrote annotated image to {annotated_image_output_path}")
-    print(f"Appended archive CSV row(s) to {archive_path}")
     for publish_message in publish_messages:
         print(publish_message)
     return 0 if result.status == "ok" and publish_ok else 1
