@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Willow Creek Trail Parking Dashboard</title>
+  <style>
+    :root {
+      --bg: #f8f9fa;
+      --surface: #ffffff;
+      --text: #1b1b1b;
+      --muted: #5c5c5c;
+      --border: #dfe1e2;
+      --primary: #005ea2;
+      --primary-dark: #1a4480;
+      --success: #2e8540;
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+      --radius: 0.35rem;
+      --max: 1120px;
+      --focus: 2px solid #2491ff;
+    }
+
+    * { box-sizing: border-box; }
+
+    html { background: var(--bg); }
+
+    body {
+      margin: 0;
+      font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #f8f9fa 0%, #ffffff 100%);
+      line-height: 1.5;
+    }
+
+    a { color: var(--primary); }
+    a:hover { color: var(--primary-dark); }
+    a:focus, button:focus { outline: var(--focus); outline-offset: 2px; }
+
+    .banner {
+      background: #112e51;
+      color: #fff;
+      border-bottom: 4px solid #fdb81e;
+    }
+
+    .banner-inner, .container {
+      width: min(calc(100% - 2rem), var(--max));
+      margin: 0 auto;
+    }
+
+    .banner-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 0;
+    }
+
+    .agency {
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.9;
+      margin: 0 0 0.25rem;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(1.5rem, 2vw + 1rem, 2.6rem);
+      line-height: 1.1;
+    }
+
+    .subtle {
+      margin: 0.35rem 0 0;
+      color: #e6e6e6;
+      max-width: 50rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      background: #fdb81e;
+      box-shadow: 0 0 0 0.2rem rgba(253, 184, 30, 0.2);
+      flex: none;
+    }
+
+    main { padding: 1.25rem 0 2rem; }
+
+    .grid {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .hero {
+      display: grid;
+      grid-template-columns: minmax(0, 1.7fr) minmax(18rem, 0.9fr);
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 1rem 1rem 0;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+
+    .card-body { padding: 1rem; }
+
+    .camera-frame {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: block;
+      border: none;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: #eef1f3;
+      margin-top: 1rem;
+      object-fit: contain;
+    }
+
+    .camera-caption {
+      margin: 0.85rem 1rem 1rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .camera-link {
+      display: inline-flex;
+      margin: 0 1rem 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .camera-link:hover { text-decoration: underline; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .metric {
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+
+    .metric-label {
+      margin: 0 0 0.35rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .metric-value {
+      margin: 0;
+      font-size: clamp(1.6rem, 2vw + 1rem, 2.4rem);
+      line-height: 1.1;
+      font-weight: 700;
+      color: #11181f;
+    }
+
+    .metric-note {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .section-title {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      color: #11181f;
+    }
+
+    .feed {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .feed li {
+      padding: 0.75rem 0;
+      border-top: 1px solid var(--border);
+      font-size: 0.96rem;
+      color: #2d2d2d;
+    }
+
+    .feed li:first-child { border-top: 0; padding-top: 0; }
+
+    .feed-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.15rem;
+    }
+
+    .feed-text {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .footer {
+      width: min(calc(100% - 2rem), var(--max));
+      margin: 0 auto 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: #b50909;
+      background: #fef1f1;
+      border: 1px solid #f3c7c7;
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    @media (max-width: 880px) {
+      .banner-inner, .hero { grid-template-columns: 1fr; }
+      .banner-inner { display: grid; }
+      .status-pill { justify-self: start; }
+      .meta { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <header class="banner">
+    <div class="banner-inner">
+      <div>
+        <p class="agency">U.S. DOT Volpe Center</p>
+        <h1 class="title">Willow Creek Trail Parking</h1>
+        <p class="subtle">Live camera view and current parking metrics sourced from the live feed on GitHub.</p>
+      </div>
+      <div class="status-pill" id="syncPill"><span class="dot" aria-hidden="true"></span><span id="syncText">Loading latest data</span></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container grid">
+      <section class="hero">
+        <article class="card" aria-labelledby="cameraHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="cameraHeading">Latest Annotated View</h2>
+          </div>
+          <img 
+            id="cameraImage"
+            class="camera-frame" 
+            src="https://raw.githubusercontent.com/VolpeUSDOT/Public-Lands-Computer-Vision/main/IP3/WCT/wct_latest_annotated.jpg" 
+            alt="Latest annotated parking camera view"
+            loading="lazy"
+          />
+          <br>
+          <a class="camera-link" href="https://www.ipcamlive.com/willowcreektrail" target="_blank" rel="noopener noreferrer">
+            Open the live video feed
+          </a>
+          <p class="camera-caption">The image above displays the latest annotated snapshot. Use the link to view the live video directly on IPCamLive.</p>
+        </article>
+
+        <aside class="card" aria-labelledby="summaryHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="summaryHeading">Parking Summary</h2>
+          </div>
+          <div class="card-body grid" id="metrics">
+            <div class="metric">
+              <p class="metric-label">Last synced time</p>
+              <p class="metric-value" id="lastSynced">--</p>
+              <p class="metric-note" id="lastSyncedNote">Waiting for feed</p>
+            </div>
+            <div class="metric">
+              <p class="metric-label">Total occupancy</p>
+              <p class="metric-value" id="occupancy">--</p>
+              <p class="metric-note" id="occupancyNote">Potentially occupied spots out of total spaces</p>
+            </div>
+            <div class="metric">
+              <p class="metric-label">Average dwell time</p>
+              <p class="metric-value" id="dwell">--</p>
+              <p class="metric-note">Average minutes across tracked vehicles</p>
+            </div>
+          </div>
+          <div class="error" id="errorBox" role="status" aria-live="polite"></div>
+        </aside>
+      </section>
+
+      <section class="card" aria-labelledby="feedHeading">
+        <div class="card-head">
+          <h2 class="card-title" id="feedHeading">Latest GitHub Feed</h2>
+        </div>
+        <div class="card-body">
+          <p class="section-title">Published status</p>
+          <ul class="feed" id="feedList">
+            <li><span class="feed-label">Status</span><span class="feed-text" id="feedStatus">Loading...</span></li>
+            <li><span class="feed-label">Timestamp UTC</span><span class="feed-text" id="feedTimestamp">--</span></li>
+            <li><span class="feed-label">Message</span><span class="feed-text" id="feedMessage">--</span></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    Data source: U.S. DOT Volpe GitHub feed.
+  </footer>
+
+  <script>
+    const REPOSITORY = "VolpeUSDOT/Public-Lands-Computer-Vision";
+    const BRANCH = "main";
+    const JSON_PATH = "IP3/WCT/wct_vehicle_count_latest.json";
+    const FEED_PATH = "IP3/WCT/wct_latest_feed.txt";
+    const IMAGE_BASE_URL = `https://raw.githubusercontent.com/${REPOSITORY}/${BRANCH}/IP3/WCT/wct_latest_annotated.jpg`;
+    const GITHUB_API_BASE = `https://api.github.com/repos/${REPOSITORY}/contents`;
+
+    const els = {
+      syncText: document.getElementById("syncText"),
+      lastSynced: document.getElementById("lastSynced"),
+      lastSyncedNote: document.getElementById("lastSyncedNote"),
+      occupancy: document.getElementById("occupancy"),
+      occupancyNote: document.getElementById("occupancyNote"),
+      dwell: document.getElementById("dwell"),
+      feedStatus: document.getElementById("feedStatus"),
+      feedTimestamp: document.getElementById("feedTimestamp"),
+      feedMessage: document.getElementById("feedMessage"),
+      errorBox: document.getElementById("errorBox"),
+      cameraImage: document.getElementById("cameraImage")
+    };
+
+    const formatUtc = (value) => {
+      if (!value) return "--";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(date) + " UTC";
+    };
+
+    const formatPct = (value) => `${Math.round(value)}%`;
+
+    const formatMinutes = (seconds) => {
+      if (seconds == null || Number.isNaN(Number(seconds))) return "--";
+      return `${(Number(seconds) / 60).toFixed(1)} min`;
+    };
+
+    const parseNumberFromFeed = (text, key) => {
+      const match = text.match(new RegExp(`^${key}:\\s*(.*)$`, "mi"));
+      if (!match) return null;
+      const value = match[1].trim();
+      const num = Number(value);
+      return Number.isFinite(num) ? num : null;
+    };
+
+    const setError = (message) => {
+      els.errorBox.textContent = message;
+      els.errorBox.style.display = message ? "block" : "none";
+    };
+
+    const updateFeedPreview = (text) => {
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const map = new Map();
+      for (const line of lines) {
+        const idx = line.indexOf(":");
+        if (idx > 0) {
+          map.set(line.slice(0, idx).trim(), line.slice(idx + 1).trim());
+        }
+      }
+      els.feedStatus.textContent = map.get("status") || "--";
+      els.feedTimestamp.textContent = formatUtc(map.get("timestamp_utc"));
+      els.feedMessage.textContent = map.get("message") || "--";
+    };
+
+    async function fetchGithubText(path) {
+      const url = `${GITHUB_API_BASE}/${path}?ref=${encodeURIComponent(BRANCH)}`;
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/vnd.github.raw",
+        },
+      });
+      if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
+      return response.text();
+    }
+
+    async function loadDashboard() {
+      try {
+        const [jsonText, feedText] = await Promise.all([
+          fetchGithubText(JSON_PATH),
+          fetchGithubText(FEED_PATH),
+        ]);
+
+        const data = JSON.parse(jsonText);
+
+        const timestamp = data.timestamp_utc || data.timestamp || null;
+        const occupied = Number(data.occupied_spot_count ?? parseNumberFromFeed(feedText, "occupied_spot_count") ?? 0);
+        const empty = Number(data.empty_spot_count ?? parseNumberFromFeed(feedText, "empty_spot_count") ?? 0);
+        const total = occupied + empty;
+        const occupancy = total > 0 ? (occupied / total) * 100 : null;
+        const dwellSeconds = data.average_vehicle_dwell_seconds ?? parseNumberFromFeed(feedText, "average_vehicle_dwell_seconds");
+
+        els.lastSynced.textContent = formatUtc(timestamp);
+        els.lastSyncedNote.textContent = timestamp ? "Sourced from the latest published GitHub snapshot" : "Timestamp unavailable";
+        els.occupancy.textContent = occupancy == null ? "--" : formatPct(occupancy);
+        els.occupancyNote.textContent = total > 0 ? `${occupied} occupied of ${total} spaces` : "No spot totals available";
+        els.dwell.textContent = formatMinutes(dwellSeconds);
+
+        updateFeedPreview(feedText);
+        els.syncText.textContent = `Updated ${formatUtc(timestamp)}`;
+        
+        // Append a timestamp cache-buster so the browser fetches the newest image version instead of a cached one
+        els.cameraImage.src = `${IMAGE_BASE_URL}?t=${new Date().getTime()}`;
+        
+        setError("");
+      } catch (error) {
+        console.error(error);
+        els.syncText.textContent = "Feed unavailable";
+        setError("The dashboard could not reach the published GitHub feeds. The camera remains available, but metrics are temporarily unavailable.");
+      }
+    }
+
+    loadDashboard();
+    setInterval(loadDashboard, 60000);
+  </script>
+</body>
+</html>
