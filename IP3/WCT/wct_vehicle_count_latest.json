@@ -1,56 +1,70 @@
 {
   "status": "ok",
-  "timestamp_utc": "2026-06-23T02:02:35.996810+00:00",
+  "timestamp_utc": "2026-06-23T02:03:42.848861+00:00",
   "webcam_page_url": "https://www.ipcamlive.com/willowcreektrail",
   "image_url": "https://s94.ipcamlive.com/streams/5evjnffbrdtvzcoua/snapshot.jpg",
   "model_path": "yolov8m.pt",
-  "vehicle_count": 3,
-  "detected_vehicle_count": 3,
+  "vehicle_count": 4,
+  "detected_vehicle_count": 4,
   "occupied_spot_count": 3,
   "empty_spot_count": 14,
-  "tracked_vehicle_count": 3,
-  "average_vehicle_dwell_seconds": 7998.108135620753,
+  "tracked_vehicle_count": 4,
+  "average_vehicle_dwell_seconds": 6047.767506420612,
   "detections": [
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.9039475321769714,
+      "confidence": 0.9129949808120728,
       "xyxy": [
-        249.41455078125,
-        329.40673828125,
-        311.74285888671875,
-        358.881591796875
+        249.3629150390625,
+        329.211181640625,
+        311.3480224609375,
+        359.111328125
       ],
       "track_id": 2520,
-      "dwell_seconds": 530,
+      "dwell_seconds": 595,
       "spot_id": "spot_7"
     },
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.8669116497039795,
+      "confidence": 0.8717940449714661,
       "xyxy": [
-        177.93948364257812,
-        322.5914611816406,
-        235.77719116210938,
-        352.1105041503906
+        178.59033203125,
+        322.5292053222656,
+        235.78717041015625,
+        352.0869445800781
       ],
       "track_id": 2349,
-      "dwell_seconds": 22540,
+      "dwell_seconds": 22606,
       "spot_id": "spot_8"
     },
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.7416593432426453,
+      "confidence": 0.5382959246635437,
       "xyxy": [
-        327.5548095703125,
-        330.435546875,
-        389.817138671875,
-        370.252197265625
+        327.494873046875,
+        330.5716247558594,
+        390.1966552734375,
+        369.7823181152344
       ],
       "track_id": 2518,
-      "dwell_seconds": 923,
+      "dwell_seconds": 988,
+      "spot_id": "spot_5"
+    },
+    {
+      "class_id": 7,
+      "class_name": "truck",
+      "confidence": 0.4975002110004425,
+      "xyxy": [
+        327.2547607421875,
+        330.5606994628906,
+        390.1456298828125,
+        369.8782043457031
+      ],
+      "track_id": 2522,
+      "dwell_seconds": 0,
       "spot_id": "spot_5"
     }
   ],
@@ -177,18 +191,18 @@
         ]
       ],
       "status": "Occupied",
-      "status_since_utc": "2026-06-23T02:00:21.737919+00:00",
+      "status_since_utc": "2026-06-23T02:03:42.848861+00:00",
       "vehicle": {
-        "track_id": 2518,
-        "vehicle_type": "car",
+        "track_id": 2522,
+        "vehicle_type": "truck",
         "vehicle_bound": [
-          327.5548095703125,
-          330.435546875,
-          389.817138671875,
-          370.252197265625
+          327.2547607421875,
+          330.5606994628906,
+          390.1456298828125,
+          369.8782043457031
         ],
-        "confidence": 0.7416593432426453,
-        "dwell_seconds": 923
+        "confidence": 0.4975002110004425,
+        "dwell_seconds": 0
       }
     },
     {
@@ -243,13 +257,13 @@
         "track_id": 2520,
         "vehicle_type": "car",
         "vehicle_bound": [
-          249.41455078125,
-          329.40673828125,
-          311.74285888671875,
-          358.881591796875
+          249.3629150390625,
+          329.211181640625,
+          311.3480224609375,
+          359.111328125
         ],
-        "confidence": 0.9039475321769714,
-        "dwell_seconds": 530
+        "confidence": 0.9129949808120728,
+        "dwell_seconds": 595
       }
     },
     {
@@ -279,13 +293,13 @@
         "track_id": 2349,
         "vehicle_type": "car",
         "vehicle_bound": [
-          177.93948364257812,
-          322.5914611816406,
-          235.77719116210938,
-          352.1105041503906
+          178.59033203125,
+          322.5292053222656,
+          235.78717041015625,
+          352.0869445800781
         ],
-        "confidence": 0.8669116497039795,
-        "dwell_seconds": 22540
+        "confidence": 0.8717940449714661,
+        "dwell_seconds": 22606
       }
     },
     {
@@ -514,7 +528,7 @@
       "vehicle": null
     }
   ],
-  "message": "Detected 3 vehicles; occupied 3 spots",
+  "message": "Detected 4 vehicles; occupied 3 spots",
   "error": null,
   "output_schema": "wct_parking_spot_occupancy_v1"
 }
