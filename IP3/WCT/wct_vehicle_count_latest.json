@@ -1,16 +1,31 @@
 {
   "status": "ok",
-  "timestamp_utc": "2026-06-28T05:18:21.194005+00:00",
+  "timestamp_utc": "2026-06-28T05:19:23.588176+00:00",
   "webcam_page_url": "https://www.ipcamlive.com/willowcreektrail",
   "image_url": "https://s94.ipcamlive.com/streams/5ezeypya5krsxac17/snapshot.jpg",
   "model_path": "yolov8m.pt",
-  "vehicle_count": 0,
-  "detected_vehicle_count": 0,
-  "occupied_spot_count": 0,
-  "empty_spot_count": 17,
+  "vehicle_count": 1,
+  "detected_vehicle_count": 1,
+  "occupied_spot_count": 1,
+  "empty_spot_count": 16,
   "tracked_vehicle_count": 1,
-  "average_vehicle_dwell_seconds": 4497.190602779388,
-  "detections": [],
+  "average_vehicle_dwell_seconds": 0.0,
+  "detections": [
+    {
+      "class_id": 2,
+      "class_name": "car",
+      "confidence": 0.42729493975639343,
+      "xyxy": [
+        502.1083679199219,
+        330.29595947265625,
+        544.834716796875,
+        366.7880859375
+      ],
+      "track_id": 2326,
+      "dwell_seconds": 0,
+      "spot_id": "spot_2"
+    }
+  ],
   "spots": [
     {
       "spot_id": "spot_1",
@@ -58,9 +73,20 @@
           380.0
         ]
       ],
-      "status": "Empty",
-      "status_since_utc": "2026-06-28T05:17:31.939838+00:00",
-      "vehicle": null
+      "status": "Occupied",
+      "status_since_utc": "2026-06-28T05:19:23.588176+00:00",
+      "vehicle": {
+        "track_id": 2326,
+        "vehicle_type": "car",
+        "vehicle_bound": [
+          502.1083679199219,
+          330.29595947265625,
+          544.834716796875,
+          366.7880859375
+        ],
+        "confidence": 0.42729493975639343,
+        "dwell_seconds": 0
+      }
     },
     {
       "spot_id": "spot_3",
@@ -438,7 +464,7 @@
       "vehicle": null
     }
   ],
-  "message": "Detected 0 vehicles; occupied 0 spots",
+  "message": "Detected 1 vehicles; occupied 1 spots",
   "error": null,
   "output_schema": "wct_parking_spot_occupancy_v1"
 }
