@@ -1,28 +1,42 @@
 {
   "status": "ok",
-  "timestamp_utc": "2026-07-07T04:07:33.254496+00:00",
+  "timestamp_utc": "2026-07-07T04:08:21.354181+00:00",
   "webcam_page_url": "https://www.ipcamlive.com/willowcreektrail",
   "image_url": "https://s94.ipcamlive.com/streams/5eaxa3uhdw5fp9lbs/snapshot.jpg",
   "model_path": "yolov8m.pt",
-  "vehicle_count": 1,
-  "detected_vehicle_count": 1,
+  "vehicle_count": 2,
+  "detected_vehicle_count": 2,
   "occupied_spot_count": 1,
   "empty_spot_count": 16,
   "tracked_vehicle_count": 2,
-  "average_vehicle_dwell_seconds": 243.14563250541687,
+  "average_vehicle_dwell_seconds": 286.64371848106384,
   "detections": [
+    {
+      "class_id": 7,
+      "class_name": "truck",
+      "confidence": 0.437790185213089,
+      "xyxy": [
+        320.46917724609375,
+        327.8531494140625,
+        400.92205810546875,
+        369.7939453125
+      ],
+      "track_id": 1716,
+      "dwell_seconds": 529,
+      "spot_id": "spot_5"
+    },
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.6760514378547668,
+      "confidence": 0.3943672180175781,
       "xyxy": [
-        320.536865234375,
-        337.0655822753906,
-        358.1397705078125,
-        369.9303894042969
+        320.36102294921875,
+        327.8463439941406,
+        400.3331298828125,
+        369.9599914550781
       ],
       "track_id": 1717,
-      "dwell_seconds": 0,
+      "dwell_seconds": 43,
       "spot_id": "spot_5"
     }
   ],
@@ -154,13 +168,13 @@
         "track_id": 1717,
         "vehicle_type": "car",
         "vehicle_bound": [
-          320.536865234375,
-          337.0655822753906,
-          358.1397705078125,
-          369.9303894042969
+          320.36102294921875,
+          327.8463439941406,
+          400.3331298828125,
+          369.9599914550781
         ],
-        "confidence": 0.6760514378547668,
-        "dwell_seconds": 0
+        "confidence": 0.3943672180175781,
+        "dwell_seconds": 43
       }
     },
     {
@@ -464,7 +478,7 @@
       "vehicle": null
     }
   ],
-  "message": "Detected 1 vehicles; occupied 1 spots",
+  "message": "Detected 2 vehicles; occupied 1 spots",
   "error": null,
   "output_schema": "wct_parking_spot_occupancy_v1"
 }
