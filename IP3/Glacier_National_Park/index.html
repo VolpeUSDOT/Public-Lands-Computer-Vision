@@ -1,0 +1,628 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Glacier National Park Webcam Dashboard</title>
+  <style>
+    :root {
+      --bg-a: #dff3f5;
+      --bg-b: #f7fbfc;
+      --surface: rgba(255, 255, 255, 0.82);
+      --surface-strong: #ffffff;
+      --text: #10212a;
+      --muted: #53656f;
+      --border: rgba(16, 33, 42, 0.11);
+      --accent: #0e7490;
+      --accent-2: #125c7a;
+      --good: #1d7f5f;
+      --shadow: 0 18px 50px rgba(12, 30, 39, 0.12);
+      --radius: 20px;
+      --max: 1240px;
+      --focus: 2px solid #0ea5e9;
+    }
+
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      color: var(--text);
+      background:
+        radial-gradient(circle at top left, rgba(22, 163, 184, 0.22), transparent 28%),
+        radial-gradient(circle at top right, rgba(29, 125, 255, 0.12), transparent 24%),
+        linear-gradient(180deg, var(--bg-a), var(--bg-b) 42%, #fff 100%);
+      font-family: "Bahnschrift", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+      line-height: 1.5;
+    }
+
+    a { color: var(--accent-2); }
+    a:focus, button:focus { outline: var(--focus); outline-offset: 2px; }
+
+    .shell {
+      width: min(calc(100% - 2rem), var(--max));
+      margin: 0 auto;
+    }
+
+    .hero {
+      padding: 1.2rem 0 1rem;
+    }
+
+    .hero-panel {
+      position: relative;
+      overflow: hidden;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background:
+        linear-gradient(135deg, rgba(16, 33, 42, 0.88), rgba(11, 58, 84, 0.85)),
+        linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0));
+      color: #fff;
+      box-shadow: var(--shadow);
+      padding: 1.4rem;
+    }
+
+    .hero-panel::before {
+      content: "";
+      position: absolute;
+      inset: -2rem -5rem auto auto;
+      width: 16rem;
+      height: 16rem;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(143, 224, 255, 0.25), transparent 68%);
+      pointer-events: none;
+    }
+
+    .eyebrow {
+      margin: 0 0 0.25rem;
+      font-size: 0.78rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.72);
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(2rem, 3vw + 1rem, 4rem);
+      line-height: 0.98;
+      letter-spacing: -0.04em;
+    }
+
+    .subtitle {
+      max-width: 64rem;
+      margin: 0.75rem 0 0;
+      color: rgba(255, 255, 255, 0.84);
+      font-size: 1.02rem;
+    }
+
+    .hero-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.75rem;
+      align-items: center;
+      justify-content: space-between;
+      margin-top: 1.1rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.55rem;
+      padding: 0.5rem 0.85rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      color: #fff;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 0.7rem;
+      height: 0.7rem;
+      border-radius: 50%;
+      background: #8ef3c0;
+      box-shadow: 0 0 0 0.25rem rgba(142, 243, 192, 0.16);
+    }
+
+    .camera-switcher {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.6rem;
+    }
+
+    .camera-btn {
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.08);
+      color: #fff;
+      padding: 0.65rem 0.95rem;
+      border-radius: 999px;
+      cursor: pointer;
+      font: inherit;
+      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease;
+    }
+
+    .camera-btn:hover { transform: translateY(-1px); }
+    .camera-btn[aria-pressed="true"] {
+      background: rgba(255, 255, 255, 0.92);
+      color: #0e2531;
+      border-color: transparent;
+    }
+
+    main { padding: 0 0 2rem; }
+
+    .layout {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .grid-2 {
+      display: grid;
+      grid-template-columns: minmax(0, 1.55fr) minmax(19rem, 0.9fr);
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .card {
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head {
+      padding: 1rem 1rem 0;
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1.12rem;
+      letter-spacing: -0.02em;
+    }
+
+    .card-body { padding: 1rem; }
+
+    .camera-frame {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: block;
+      border: 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: #dbe7ea;
+      object-fit: cover;
+      margin-top: 1rem;
+    }
+
+    .camera-meta {
+      display: grid;
+      gap: 0.75rem;
+      margin-top: 0.9rem;
+    }
+
+    .meta-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.65rem;
+      align-items: center;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 0.93rem;
+    }
+
+    .camera-link {
+      display: inline-flex;
+      margin-top: 0.2rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+
+    .camera-link:hover { text-decoration: underline; }
+
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 0.85rem;
+    }
+
+    .metric {
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.88);
+    }
+
+    .metric-label {
+      margin: 0 0 0.25rem;
+      color: var(--muted);
+      font-size: 0.88rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .metric-value {
+      margin: 0;
+      font-size: clamp(1.55rem, 2vw + 1rem, 2.5rem);
+      line-height: 1;
+      font-weight: 700;
+    }
+
+    .metric-note {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .camera-list {
+      display: grid;
+      gap: 0.75rem;
+    }
+
+    .camera-item {
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 0.85rem;
+      display: grid;
+      gap: 0.35rem;
+    }
+
+    .camera-item.active {
+      border-color: rgba(14, 116, 144, 0.35);
+      box-shadow: inset 0 0 0 1px rgba(14, 116, 144, 0.15);
+    }
+
+    .camera-name {
+      margin: 0;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+
+    .camera-line {
+      margin: 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .feed {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.65rem;
+    }
+
+    .feed li {
+      padding-top: 0.65rem;
+      border-top: 1px solid var(--border);
+      display: grid;
+      gap: 0.2rem;
+    }
+
+    .feed li:first-child {
+      border-top: 0;
+      padding-top: 0;
+    }
+
+    .feed-label {
+      color: var(--muted);
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .feed-text {
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-size: 0.96rem;
+    }
+
+    .error {
+      display: none;
+      margin-top: 0.9rem;
+      padding: 0.85rem 1rem;
+      border-radius: 16px;
+      background: #fff1f1;
+      border: 1px solid #f2caca;
+      color: #a4161a;
+    }
+
+    .footer {
+      width: min(calc(100% - 2rem), var(--max));
+      margin: 0 auto 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    @media (max-width: 980px) {
+      .grid-2, .metric-grid { grid-template-columns: 1fr; }
+      .hero-row { align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="shell">
+      <section class="hero-panel">
+        <p class="eyebrow">U.S. DOT Volpe Center</p>
+        <h1 class="title">Glacier National Park webcams</h1>
+        <p class="subtitle">Vehicle counts from Logan Pass, West Entrance, and Apgar Village. The page shows the latest published annotated frame and feed for the selected camera.</p>
+        <div class="hero-row">
+          <div class="status-pill" id="syncPill"><span class="dot" aria-hidden="true"></span><span id="syncText">Loading latest data</span></div>
+          <div class="camera-switcher" role="tablist" aria-label="Glacier cameras">
+            <button class="camera-btn" id="btn-logan_pass" data-camera="logan_pass" aria-pressed="true" type="button">Logan Pass</button>
+            <button class="camera-btn" id="btn-west_entrance" data-camera="west_entrance" aria-pressed="false" type="button">West Entrance</button>
+            <button class="camera-btn" id="btn-apgar_village" data-camera="apgar_village" aria-pressed="false" type="button">Apgar Village</button>
+          </div>
+        </div>
+      </section>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell layout">
+      <section class="grid-2">
+        <article class="card" aria-labelledby="cameraHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="cameraHeading">Latest annotated view</h2>
+          </div>
+          <img id="cameraImage" class="camera-frame" alt="Latest annotated Glacier webcam image" loading="lazy" />
+          <div class="card-body camera-meta">
+            <div class="meta-row">
+              <span id="cameraLabel">--</span>
+              <span id="cameraTimestamp">--</span>
+            </div>
+            <a class="camera-link" id="cameraPageLink" href="#" target="_blank" rel="noopener noreferrer">Open source webcam page</a>
+            <div class="error" id="errorBox" role="status" aria-live="polite"></div>
+          </div>
+        </article>
+
+        <aside class="card" aria-labelledby="summaryHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="summaryHeading">Counts</h2>
+          </div>
+          <div class="card-body">
+            <div class="metric-grid">
+              <div class="metric">
+                <p class="metric-label">Selected camera</p>
+                <p class="metric-value" id="selectedCamera">--</p>
+                <p class="metric-note">Switch cameras above</p>
+              </div>
+              <div class="metric">
+                <p class="metric-label">Vehicle count</p>
+                <p class="metric-value" id="vehicleCount">--</p>
+                <p class="metric-note">Vehicles anywhere in frame</p>
+              </div>
+              <div class="metric">
+                <p class="metric-label">Last update</p>
+                <p class="metric-value" id="lastUpdate">--</p>
+                <p class="metric-note">UTC timestamp from the feed</p>
+              </div>
+            </div>
+
+            <div style="height: 1rem;"></div>
+
+            <div class="camera-list" id="cameraList" aria-label="Camera summaries"></div>
+          </div>
+        </aside>
+      </section>
+
+      <section class="card" aria-labelledby="feedHeading">
+        <div class="card-head">
+          <h2 class="card-title" id="feedHeading">Latest feed</h2>
+        </div>
+        <div class="card-body">
+          <ul class="feed">
+            <li><span class="feed-label">Status</span><span class="feed-text" id="feedStatus">--</span></li>
+            <li><span class="feed-label">Timestamp UTC</span><span class="feed-text" id="feedTimestamp">--</span></li>
+            <li><span class="feed-label">Message</span><span class="feed-text" id="feedMessage">--</span></li>
+            <li><span class="feed-label">Image URL</span><span class="feed-text" id="feedImageUrl">--</span></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    Data source: U.S. DOT Volpe GitHub snapshot for Glacier National Park.
+  </footer>
+
+  <script>
+    const REPOSITORY = "VolpeUSDOT/Public-Lands-Computer-Vision";
+    const BRANCH = "main";
+    const GITHUB_API_BASE = `https://api.github.com/repos/${REPOSITORY}/contents`;
+
+    const CAMERAS = {
+      logan_pass: {
+        name: "Logan Pass",
+        label: "Logan Pass Parking Lot",
+        jsonPath: "IP3/Glacier_National_Park/glacier_latest_feed.json",
+        feedPath: "IP3/Glacier_National_Park/glacier_latest_feed.txt",
+        imagePath: "IP3/Glacier_National_Park/glacier_latest_annotated.jpg",
+        pageUrl: "https://www.nps.gov/media/webcam/view.htm?id=325AE6AF-BAEB-F65D-EF3D638BF683E78E&r=/glac/learn/photosmultimedia/webcams.htm",
+      },
+      west_entrance: {
+        name: "West Entrance",
+        label: "West Entrance",
+        jsonPath: "IP3/Glacier_National_Park/glacier_west_entrance_feed.json",
+        feedPath: "IP3/Glacier_National_Park/glacier_west_entrance_feed.txt",
+        imagePath: "IP3/Glacier_National_Park/glacier_west_entrance_annotated.jpg",
+        pageUrl: "https://www.nps.gov/media/webcam/view.htm?id=33478DF3-1DD8-B71B-0B8C97DB0A03B0F7",
+      },
+      apgar_village: {
+        name: "Apgar Village",
+        label: "Apgar Village",
+        jsonPath: "IP3/Glacier_National_Park/glacier_apgar_village_feed.json",
+        feedPath: "IP3/Glacier_National_Park/glacier_apgar_village_feed.txt",
+        imagePath: "IP3/Glacier_National_Park/glacier_apgar_village_annotated.jpg",
+        pageUrl: "https://www.nps.gov/media/webcam/view.htm?id=81B4692D-1DD8-B71B-0B9AE4B7C186B022",
+      },
+    };
+
+    const state = {
+      selectedCamera: "logan_pass",
+      feeds: {},
+      json: {},
+    };
+
+    const els = {
+      syncText: document.getElementById("syncText"),
+      cameraImage: document.getElementById("cameraImage"),
+      cameraLabel: document.getElementById("cameraLabel"),
+      cameraTimestamp: document.getElementById("cameraTimestamp"),
+      cameraPageLink: document.getElementById("cameraPageLink"),
+      selectedCamera: document.getElementById("selectedCamera"),
+      vehicleCount: document.getElementById("vehicleCount"),
+      lastUpdate: document.getElementById("lastUpdate"),
+      feedStatus: document.getElementById("feedStatus"),
+      feedTimestamp: document.getElementById("feedTimestamp"),
+      feedMessage: document.getElementById("feedMessage"),
+      feedImageUrl: document.getElementById("feedImageUrl"),
+      cameraList: document.getElementById("cameraList"),
+      errorBox: document.getElementById("errorBox"),
+    };
+
+    const formatUtc = (value) => {
+      if (!value) return "--";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return `${new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: "UTC",
+      }).format(date)} UTC`;
+    };
+
+    const parseFeed = (text) => {
+      const map = new Map();
+      for (const line of text.split(/\r?\n/)) {
+        const idx = line.indexOf(":");
+        if (idx > 0) {
+          map.set(line.slice(0, idx).trim(), line.slice(idx + 1).trim());
+        }
+      }
+      return map;
+    };
+
+    const setError = (message) => {
+      els.errorBox.textContent = message;
+      els.errorBox.style.display = message ? "block" : "none";
+    };
+
+    async function fetchGithubText(path) {
+      const url = `${GITHUB_API_BASE}/${path}?ref=${encodeURIComponent(BRANCH)}`;
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: { Accept: "application/vnd.github.raw" },
+      });
+      if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
+      return response.text();
+    }
+
+    async function loadCameraData(cameraKey) {
+      const camera = CAMERAS[cameraKey];
+      const [jsonText, feedText] = await Promise.all([
+        fetchGithubText(camera.jsonPath),
+        fetchGithubText(camera.feedPath),
+      ]);
+      return {
+        json: JSON.parse(jsonText),
+        feed: feedText,
+      };
+    }
+
+    function buildCameraList() {
+      els.cameraList.innerHTML = "";
+      for (const [cameraKey, camera] of Object.entries(CAMERAS)) {
+        const item = document.createElement("div");
+        item.className = "camera-item";
+        item.id = `summary-${cameraKey}`;
+        item.innerHTML = `
+          <p class="camera-name">${camera.name}</p>
+          <p class="camera-line" id="summary-count-${cameraKey}">Loading...</p>
+          <p class="camera-line" id="summary-time-${cameraKey}">--</p>
+        `;
+        els.cameraList.appendChild(item);
+      }
+    }
+
+    function updateSummary(cameraKey) {
+      for (const key of Object.keys(CAMERAS)) {
+        const item = document.getElementById(`summary-${key}`);
+        const button = document.getElementById(`btn-${key}`);
+        if (item) item.classList.toggle("active", key === cameraKey);
+        if (button) button.setAttribute("aria-pressed", key === cameraKey ? "true" : "false");
+      }
+    }
+
+    function renderSelected(cameraKey) {
+      const camera = CAMERAS[cameraKey];
+      const json = state.json[cameraKey];
+      const feed = state.feeds[cameraKey];
+      if (!camera || !json || !feed) return;
+
+      const imageUrl = `https://raw.githubusercontent.com/${REPOSITORY}/${BRANCH}/${camera.imagePath}?t=${Date.now()}`;
+      els.cameraImage.src = imageUrl;
+      els.cameraImage.alt = `${camera.name} annotated image`;
+      els.cameraLabel.textContent = camera.label;
+      els.cameraTimestamp.textContent = formatUtc(json.timestamp_utc);
+      els.cameraPageLink.href = camera.pageUrl;
+      els.selectedCamera.textContent = camera.name;
+      els.vehicleCount.textContent = String(json.vehicle_count ?? "--");
+      els.lastUpdate.textContent = formatUtc(json.timestamp_utc);
+
+      const feedMap = parseFeed(feed);
+      els.feedStatus.textContent = feedMap.get("status") || json.status || "--";
+      els.feedTimestamp.textContent = formatUtc(feedMap.get("timestamp_utc") || json.timestamp_utc);
+      els.feedMessage.textContent = feedMap.get("message") || json.message || "--";
+      els.feedImageUrl.textContent = feedMap.get("image_url") || imageUrl;
+      els.syncText.textContent = `Updated ${formatUtc(json.timestamp_utc)}`;
+
+      setError("");
+      updateSummary(cameraKey);
+    }
+
+    function renderAllSummaries() {
+      for (const [cameraKey, camera] of Object.entries(CAMERAS)) {
+        const json = state.json[cameraKey];
+        const feed = state.feeds[cameraKey];
+        const countEl = document.getElementById(`summary-count-${cameraKey}`);
+        const timeEl = document.getElementById(`summary-time-${cameraKey}`);
+        if (!json || !feed || !countEl || !timeEl) continue;
+        const feedMap = parseFeed(feed);
+        countEl.textContent = `Count: ${json.vehicle_count ?? "--"} vehicles`;
+        timeEl.textContent = formatUtc(feedMap.get("timestamp_utc") || json.timestamp_utc);
+      }
+    }
+
+    async function loadDashboard() {
+      try {
+        const entries = await Promise.all(
+          Object.keys(CAMERAS).map(async (cameraKey) => [cameraKey, await loadCameraData(cameraKey)])
+        );
+        for (const [cameraKey, data] of entries) {
+          state.json[cameraKey] = data.json;
+          state.feeds[cameraKey] = data.feed;
+        }
+        renderAllSummaries();
+        renderSelected(state.selectedCamera);
+      } catch (error) {
+        console.error(error);
+        els.syncText.textContent = "Feed unavailable";
+        setError("The dashboard could not load one or more published Glacier feeds.");
+      }
+    }
+
+    document.querySelectorAll(".camera-btn").forEach((button) => {
+      button.addEventListener("click", () => {
+        state.selectedCamera = button.dataset.camera;
+        renderSelected(state.selectedCamera);
+      });
+    });
+
+    buildCameraList();
+    loadDashboard();
+    setInterval(loadDashboard, 60000);
+  </script>
+</body>
+</html>
