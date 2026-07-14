@@ -1,15 +1,15 @@
 Willow Creek Trail Parking Lot webcam vehicle feed
 status: ok
-timestamp_utc: 2026-07-14T03:12:21.521039+00:00
+timestamp_utc: 2026-07-14T03:13:18.835412+00:00
 webcam_page_url: https://www.ipcamlive.com/willowcreektrail
 image_url: https://s94.ipcamlive.com/streams/5eu4gumr0vkf8pecq/snapshot.jpg
 model_path: yolov8m.pt
-vehicle_count: 0
-tracked_vehicle_count: 1
-average_vehicle_dwell_seconds: 1440.2735369205475
-occupied_spot_count: 0
-empty_spot_count: 17
-message: Detected 0 vehicles; occupied 0 spots
+vehicle_count: 2
+tracked_vehicle_count: 2
+average_vehicle_dwell_seconds: 748.5331089496613
+occupied_spot_count: 1
+empty_spot_count: 16
+message: Detected 2 vehicles; occupied 1 spots
 spots:
 - Spot 1 (spot_1): Empty since 2026-07-13T23:54:41.337943+00:00
 - Spot 2 (spot_2): Empty since 2026-07-13T22:38:20.453368+00:00
@@ -18,7 +18,8 @@ spots:
 - Spot 5 (spot_5): Empty since 2026-07-14T02:57:19.781170+00:00
 - Spot 6 (spot_6): Empty since 2026-07-14T01:42:42.287107+00:00
 - Spot 7 (spot_7): Empty since 2026-07-14T00:18:43.510894+00:00
-- Spot 8 (spot_8): Empty since 2026-07-14T03:12:21.521039+00:00
+- Spot 8 (spot_8): Occupied since 2026-07-14T03:13:18.835412+00:00
+  vehicle: car (track_id=181, confidence=0.442) bound=[199.54269409179688, 316.4670715332031, 278.7544860839844, 353.2843933105469] dwell 1497 sec
 - Spot 9 (spot_9): Empty since 2026-07-14T03:02:23.964997+00:00
 - Spot 10 (spot_10): Empty since 2026-07-14T03:06:21.851167+00:00
 - Spot 11 (spot_11): Empty since 2026-07-14T01:03:18.245072+00:00
@@ -28,4 +29,7 @@ spots:
 - Spot 15 (spot_15): Empty since 2026-07-13T22:18:20.405725+00:00
 - Spot 16 (spot_16): Empty since 2026-07-13T22:35:22.003550+00:00
 - Spot 17 (spot_17): Empty since 2026-07-13T17:46:26.396031+00:00
+detections:
+- truck (class_id=7, confidence=0.444) xyxy=[199.64541625976562, 316.42529296875, 278.29656982421875, 353.196533203125] dwell 0 sec
+- car (class_id=2, confidence=0.442) xyxy=[199.54269409179688, 316.4670715332031, 278.7544860839844, 353.2843933105469] dwell 1497 sec
 output_schema: wct_parking_spot_occupancy_v1
