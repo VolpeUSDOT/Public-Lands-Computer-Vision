@@ -34,6 +34,8 @@ def _default_output_dir() -> Path:
     name = SCRIPT_DIR.name.upper()
     if name == "ARCH":
         return SCRIPT_DIR
+    if name == "GRCA":
+        return SCRIPT_DIR
     if name == "IP3":
         return SCRIPT_DIR / "ARCH"
     if SCRIPT_DIR.parent.name.upper() == "IP3":
@@ -44,6 +46,9 @@ def _default_output_dir() -> Path:
 DEFAULT_WEBCAM_PAGE_URL = (
     "https://www.nps.gov/media/webcam/view.htm?id=9B5FC6BA-9FE6-EC6B-61637825D562D367&r=/grca/learn/photosmultimedia/webcams.htm"
 )
+DEFAULT_SR64_WEBCAM_PAGE_URL = (
+    "https://www.nps.gov/media/webcam/view.htm?id=7D6A3936-E1C5-C480-4FA08472583AA182&r=/grca/learn/photosmultimedia/webcams.htm"
+)
 DEFAULT_FALLBACK_IMAGE_URL = ""
 DEFAULT_UTDOT_WEBCAM_PAGE_URL = "https://prod-ut.ibi511.com/map/Cctv/136741?t=1782490208"
 DEFAULT_UTDOT_FALLBACK_IMAGE_URL = DEFAULT_UTDOT_WEBCAM_PAGE_URL
@@ -52,6 +57,7 @@ DEFAULT_OUTPUT_DIR = _default_output_dir()
 DEFAULT_LANES_PATH = DEFAULT_OUTPUT_DIR / "grca_lanes.json"
 DEFAULT_FEED_OUTPUT_PATH = DEFAULT_OUTPUT_DIR / "grca_latest_feed.txt"
 DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH = DEFAULT_OUTPUT_DIR / "grca_latest_annotated.jpg"
+DEFAULT_SR64_ANNOTATED_IMAGE_OUTPUT_PATH = DEFAULT_OUTPUT_DIR / "sr64_annotated.jpg"
 DEFAULT_ARCHIVE_OUTPUT_PATH = DEFAULT_OUTPUT_DIR / "grca_archivefeed.csv"
 DEFAULT_UTDOT_LANES_PATH = DEFAULT_OUTPUT_DIR / "utdot_lanes.json"
 DEFAULT_UTDOT_ANNOTATED_IMAGE_OUTPUT_PATH = DEFAULT_OUTPUT_DIR / "UTDOT_latest_annotated.jpg"
@@ -76,7 +82,9 @@ VEHICLE_CLASSES = [2, 3, 5, 7]
 @dataclass(frozen=True)
 class Config:
     webcam_page_url: str = DEFAULT_WEBCAM_PAGE_URL
+    sr64_webcam_page_url: str = DEFAULT_SR64_WEBCAM_PAGE_URL
     fallback_image_url: str = DEFAULT_FALLBACK_IMAGE_URL
+    sr64_fallback_image_url: str = DEFAULT_FALLBACK_IMAGE_URL
     utdot_webcam_page_url: str = DEFAULT_UTDOT_WEBCAM_PAGE_URL
     utdot_fallback_image_url: str = DEFAULT_UTDOT_FALLBACK_IMAGE_URL
     model_path: str = DEFAULT_MODEL_PATH
@@ -85,6 +93,7 @@ class Config:
     output_path: Path = DEFAULT_OUTPUT_PATH
     feed_output_path: Path = DEFAULT_FEED_OUTPUT_PATH
     annotated_image_output_path: Path = DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH
+    sr64_annotated_image_output_path: Path = DEFAULT_SR64_ANNOTATED_IMAGE_OUTPUT_PATH
     utdot_annotated_image_output_path: Path = DEFAULT_UTDOT_ANNOTATED_IMAGE_OUTPUT_PATH
     archive_output_path: Path = DEFAULT_ARCHIVE_OUTPUT_PATH
     github_repository: str = DEFAULT_GITHUB_REPOSITORY
@@ -150,7 +159,9 @@ def load_config() -> Config:
         publish_to_github = True
     return Config(
         webcam_page_url=os.getenv("WEBCAM_PAGE_URL", DEFAULT_WEBCAM_PAGE_URL),
+        sr64_webcam_page_url=os.getenv("SR64_WEBCAM_PAGE_URL", DEFAULT_SR64_WEBCAM_PAGE_URL),
         fallback_image_url=os.getenv("FALLBACK_IMAGE_URL", DEFAULT_FALLBACK_IMAGE_URL),
+        sr64_fallback_image_url=os.getenv("SR64_FALLBACK_IMAGE_URL", DEFAULT_FALLBACK_IMAGE_URL),
         utdot_webcam_page_url=os.getenv("UTDOT_WEBCAM_PAGE_URL", DEFAULT_UTDOT_WEBCAM_PAGE_URL),
         utdot_fallback_image_url=os.getenv("UTDOT_FALLBACK_IMAGE_URL", DEFAULT_UTDOT_FALLBACK_IMAGE_URL),
         model_path=os.getenv("MODEL_PATH", DEFAULT_MODEL_PATH),
@@ -159,6 +170,7 @@ def load_config() -> Config:
         output_path=output_path,
         feed_output_path=feed_output_path,
         annotated_image_output_path=annotated_image_output_path,
+        sr64_annotated_image_output_path=normalize_grca_path(Path(os.getenv("SR64_ANNOTATED_IMAGE_OUTPUT_PATH", str(DEFAULT_SR64_ANNOTATED_IMAGE_OUTPUT_PATH))).expanduser()),
         utdot_annotated_image_output_path=utdot_annotated_image_output_path,
         archive_output_path=archive_output_path,
         github_repository=os.getenv("GITHUB_REPOSITORY", DEFAULT_GITHUB_REPOSITORY),
@@ -234,30 +246,86 @@ def resolve_image_url(page_html: bytes, fallback_image_url: str) -> str:
             return f"https://www.nps.gov{url}"
         return url
 
+    def candidate_score(candidate: str, context: str = "") -> int:
+        text = f"{candidate} {context}".lower()
+        score = 0
+
+        positive_terms = {
+            "webcam": 10,
+            "camera": 8,
+            "cctv": 8,
+            "live": 6,
+            "image": 4,
+            "photosmultimedia": 6,
+            "south entrance": 6,
+            "entrance station": 6,
+        }
+        negative_terms = {
+            "flag": -12,
+            "logo": -12,
+            "icon": -10,
+            "sprite": -10,
+            "search": -8,
+            "menu": -8,
+            "social": -8,
+            "footer": -6,
+            "header": -6,
+        }
+
+        for term, weight in positive_terms.items():
+            if term in text:
+                score += weight
+        for term, weight in negative_terms.items():
+            if term in text:
+                score += weight
+
+        if re.search(r"/webcam/|webcam|camera|cctv", candidate, re.IGNORECASE):
+            score += 12
+        if re.search(r"/flag|flag|logo|icon|sprite", candidate, re.IGNORECASE):
+            score -= 12
+        if re.search(r"\.(?:jpg|jpeg|png)(?:\?|$)", candidate, re.IGNORECASE):
+            score += 2
+
+        return score
+
     soup = BeautifulSoup(page_html, "html.parser")
-    candidate_sources: list[str] = []
+    scored_candidates: list[tuple[int, str]] = []
     for tag in soup.find_all(["img", "meta", "source", "a", "link"]):
+        context_bits = [
+            str(tag.get("alt", "")),
+            str(tag.get("title", "")),
+            str(tag.get("aria-label", "")),
+            str(tag.get("id", "")),
+            str(tag.get("class", "")),
+        ]
+        parent = tag.parent
+        if parent is not None:
+            context_bits.append(parent.get_text(" ", strip=True)[:400])
+        context = " ".join(bit for bit in context_bits if bit)
         for key in ("src", "data-src", "href", "content", "srcset"):
             value = tag.get(key, "")
             if value:
-                candidate_sources.append(str(value))
+                raw_value = str(value)
+                candidate = normalize_candidate(raw_value.split(",", 1)[0].split(" ", 1)[0])
+                lowered = candidate.lower()
+                if not lowered.endswith((".jpg", ".jpeg", ".png")) and ".jpg?" not in lowered and ".jpeg?" not in lowered and ".png?" not in lowered:
+                    continue
+                scored_candidates.append((candidate_score(candidate, context), candidate))
 
     page_text = page_html.decode("utf-8", errors="ignore")
-    candidate_sources.extend(
-        re.findall(r"https?://[^\"'\s>]+?\.(?:jpg|jpeg|png)(?:\?[^\"'\s>]*)?", page_text, re.IGNORECASE)
-    )
-    candidate_sources.extend(
-        re.findall(r"//[^\"'\s>]+?\.(?:jpg|jpeg|png)(?:\?[^\"'\s>]*)?", page_text, re.IGNORECASE)
-    )
-    candidate_sources.extend(
-        re.findall(r"/[^\"'\s>]+?\.(?:jpg|jpeg|png)(?:\?[^\"'\s>]*)?", page_text, re.IGNORECASE)
-    )
+    for raw_candidate in re.findall(r"https?://[^\"'\s>]+?\.(?:jpg|jpeg|png)(?:\?[^\"'\s>]*)?", page_text, re.IGNORECASE):
+        candidate = normalize_candidate(raw_candidate)
+        scored_candidates.append((candidate_score(candidate, page_text), candidate))
+    for raw_candidate in re.findall(r"//[^\"'\s>]+?\.(?:jpg|jpeg|png)(?:\?[^\"'\s>]*)?", page_text, re.IGNORECASE):
+        candidate = normalize_candidate(raw_candidate)
+        scored_candidates.append((candidate_score(candidate, page_text), candidate))
+    for raw_candidate in re.findall(r"/[^\"'\s>]+?\.(?:jpg|jpeg|png)(?:\?[^\"'\s>]*)?", page_text, re.IGNORECASE):
+        candidate = normalize_candidate(raw_candidate)
+        scored_candidates.append((candidate_score(candidate, page_text), candidate))
 
-    for raw_candidate in candidate_sources:
-        candidate = normalize_candidate(raw_candidate.split(",", 1)[0].split(" ", 1)[0])
-        lowered = candidate.lower()
-        if lowered.endswith((".jpg", ".jpeg", ".png")) or ".jpg?" in lowered or ".jpeg?" in lowered or ".png?" in lowered:
-            return candidate
+    if scored_candidates:
+        scored_candidates.sort(key=lambda item: item[0], reverse=True)
+        return scored_candidates[0][1]
 
     return fallback_image_url
 
@@ -1174,7 +1242,9 @@ def build_config(args: argparse.Namespace) -> Config:
     config = load_config()
     return Config(
         webcam_page_url=config.webcam_page_url,
+        sr64_webcam_page_url=config.sr64_webcam_page_url,
         fallback_image_url=config.fallback_image_url,
+        sr64_fallback_image_url=config.sr64_fallback_image_url,
         utdot_webcam_page_url=config.utdot_webcam_page_url,
         utdot_fallback_image_url=config.utdot_fallback_image_url,
         model_path=args.model or config.model_path,
@@ -1183,6 +1253,7 @@ def build_config(args: argparse.Namespace) -> Config:
         output_path=args.output or config.output_path,
         feed_output_path=args.feed_output or config.feed_output_path,
         annotated_image_output_path=config.annotated_image_output_path,
+        sr64_annotated_image_output_path=config.sr64_annotated_image_output_path,
         utdot_annotated_image_output_path=config.utdot_annotated_image_output_path,
         archive_output_path=config.archive_output_path,
         github_repository=config.github_repository,
@@ -1213,8 +1284,15 @@ def main() -> int:
         count_lane_label="Lane 1",
     )
     utdot_result, utdot_annotated_image = run_utdot_detection_with_image(config)
+    sr64_result, sr64_annotated_image = _run_detection_with_image(
+        config,
+        webcam_page_url=config.sr64_webcam_page_url,
+        fallback_image_url=config.sr64_fallback_image_url,
+        lanes_path=config.lanes_path,
+        count_lane_label="Lane 1",
+    )
 
-    if grca_result.status == "ok" and utdot_result.status == "ok":
+    if grca_result.status == "ok" and utdot_result.status == "ok" and sr64_result.status == "ok":
         grca_result.on_entrance_road = utdot_result.on_entrance_road
         grca_result.message = (
             f"Detected {grca_result.vehicle_count} vehicles anywhere in frame; "
@@ -1234,6 +1312,10 @@ def main() -> int:
     utdot_image_output_path = None
     if utdot_annotated_image is not None:
         utdot_image_output_path = write_annotated_image(utdot_annotated_image, config.utdot_annotated_image_output_path)
+
+    sr64_image_output_path = None
+    if sr64_annotated_image is not None:
+        sr64_image_output_path = write_annotated_image(sr64_annotated_image, config.sr64_annotated_image_output_path)
 
     publish_messages: list[str] = []
     publish_ok = True
@@ -1275,10 +1357,12 @@ def main() -> int:
         print(f"Wrote annotated image to {annotated_image_output_path}")
     if utdot_image_output_path:
         print(f"Wrote UTDOT annotated image to {utdot_image_output_path}")
+    if sr64_image_output_path:
+        print(f"Wrote SR64 annotated image to {sr64_image_output_path}")
     for publish_message in publish_messages:
         print(publish_message)
 
-    return 0 if grca_result.status == "ok" and utdot_result.status == "ok" and publish_ok else 1
+    return 0 if grca_result.status == "ok" and utdot_result.status == "ok" and sr64_result.status == "ok" and publish_ok else 1
 
 
 if __name__ == "__main__":
