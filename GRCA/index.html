@@ -1,0 +1,1031 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Grand Canyon National Park Traffic Dashboard</title>
+  <style>
+    :root {
+      --bg: #f7f6f0;
+      --surface: #ffffff;
+      --text: #1a1d1a;
+      --muted: #5f665f;
+      --border: #d8dccf;
+      --primary: #c56c39;
+      --primary-dark: #9e4f24;
+      --accent: #1f5e3b;
+      --accent-soft: rgba(31, 94, 59, 0.18);
+      --shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+      --radius: 0.35rem;
+      --max: 1120px;
+      --focus: 2px solid #1f5e3b;
+    }
+
+    * { box-sizing: border-box; }
+    html { background: var(--bg); }
+
+    body {
+      margin: 0;
+      font-family: "Source Sans Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      background: linear-gradient(180deg, #f7f6f0 0%, #ffffff 100%);
+      line-height: 1.5;
+    }
+
+    a { color: var(--primary); }
+    a:hover { color: var(--primary-dark); }
+    a:focus, button:focus { outline: var(--focus); outline-offset: 2px; }
+
+    .banner {
+      background: linear-gradient(135deg, #c56c39 0%, #a95b2f 100%);
+      color: #fff;
+      border-bottom: 4px solid var(--accent);
+    }
+
+    .banner-inner, .container {
+      width: min(calc(100% - 2rem), var(--max));
+      margin: 0 auto;
+    }
+
+    .banner-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1rem;
+      padding: 0.9rem 0;
+    }
+
+    .agency {
+      font-size: 0.85rem;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      opacity: 0.92;
+      margin: 0 0 0.25rem;
+    }
+
+    .title {
+      margin: 0;
+      font-size: clamp(1.5rem, 2vw + 1rem, 2.6rem);
+      line-height: 1.1;
+    }
+
+    .subtle {
+      margin: 0.35rem 0 0;
+      color: #edf3ed;
+      max-width: 50rem;
+    }
+
+    .status-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.45rem 0.75rem;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.22);
+      color: #fff;
+      font-size: 0.95rem;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 0.6rem;
+      height: 0.6rem;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 0.2rem rgba(31, 94, 59, 0.2);
+      flex: none;
+    }
+
+    main { padding: 1.25rem 0 2rem; }
+    .grid { display: grid; gap: 1rem; }
+    .hero {
+      display: grid;
+      gap: 1rem;
+      align-items: start;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .camera-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .feed-section {
+      display: grid;
+      gap: 1rem;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+
+    .card-head { padding: 1rem 1rem 0; }
+    .card-title {
+      margin: 0;
+      font-size: 1.1rem;
+    }
+    .card-body { padding: 1rem; }
+
+    .camera-frame {
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      display: block;
+      border: none;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      background: #eef1ec;
+      margin-top: 1rem;
+      object-fit: contain;
+    }
+
+    .camera-caption {
+      margin: 0.85rem 1rem 1rem;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .camera-caption:first-of-type {
+      color: var(--text);
+    }
+
+    .camera-link {
+      display: inline-flex;
+      margin: 0 1rem 0.85rem;
+      font-weight: 700;
+      text-decoration: none;
+    }
+    .camera-link:hover { text-decoration: underline; }
+
+    .meta {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem;
+    }
+
+    .metric {
+      padding: 1rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: #fff;
+    }
+
+    .metric-label {
+      margin: 0 0 0.35rem;
+      color: var(--muted);
+      font-size: 0.95rem;
+    }
+
+    .metric-value {
+      margin: 0;
+      font-size: clamp(1.6rem, 2vw + 1rem, 2.4rem);
+      line-height: 1.1;
+      font-weight: 700;
+      color: #11181f;
+    }
+
+    .metric-lanes {
+      display: grid;
+      gap: 0.85rem;
+    }
+
+    .lane-counts {
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .lane-row {
+      display: grid;
+      gap: 0.5rem;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+
+    .lane-row-total {
+      grid-template-columns: minmax(0, 1fr);
+    }
+
+    .lane-cell {
+      display: grid;
+      justify-items: center;
+      gap: 0.15rem;
+      min-height: 4.1rem;
+      padding: 0.65rem 0.45rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #fcfcf9 0%, #f5f7f0 100%);
+    }
+
+    .lane-cell-total {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 1rem;
+      padding-inline: 0.9rem;
+    }
+
+    .lane-tag {
+      color: var(--muted);
+      font-size: 0.74rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    .lane-count {
+      font-size: clamp(1.15rem, 1.8vw + 0.8rem, 1.85rem);
+      line-height: 1.05;
+      font-weight: 700;
+      color: #11181f;
+    }
+
+    .metric-note {
+      margin: 0.35rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .section-title {
+      margin: 0 0 0.5rem;
+      font-size: 1rem;
+      color: #11181f;
+    }
+
+    .feed {
+      margin: 0;
+      padding: 0;
+      list-style: none;
+      display: grid;
+      gap: 0.6rem;
+    }
+
+    .feed li {
+      padding: 0.75rem 0;
+      border-top: 1px solid var(--border);
+      font-size: 0.96rem;
+      color: #2d2d2d;
+    }
+
+    .feed li:first-child { border-top: 0; padding-top: 0; }
+
+    .feed-label {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      margin-bottom: 0.15rem;
+    }
+
+    .feed-text {
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+
+    .placeholder {
+      border: 1px dashed #b8bfb0;
+      border-radius: var(--radius);
+      background: linear-gradient(180deg, #fafaf7 0%, #f1f3ec 100%);
+      padding: 1rem;
+    }
+
+    .placeholder-title {
+      margin: 0;
+      font-size: 1rem;
+      color: #11181f;
+    }
+
+    .placeholder-note {
+      margin: 0.25rem 0 0;
+      color: var(--muted);
+      font-size: 0.92rem;
+    }
+
+    .interval-chart {
+      margin-top: 1rem;
+      padding-top: 1rem;
+      border-top: 1px solid var(--border);
+    }
+
+    .interval-chart-wrap {
+      position: relative;
+      margin-top: 0.75rem;
+      padding-top: 1.5rem;
+      padding-left: 2.6rem;
+      height: 12rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background:
+        linear-gradient(to right, rgba(31, 94, 59, 0.12) 0, rgba(31, 94, 59, 0.12) 1px, transparent 1px) 0 0 / 25% 100%,
+        linear-gradient(180deg, #fafaf7 0%, #f2f4ee 100%);
+      background-origin: content-box, padding-box;
+      background-repeat: repeat-x, no-repeat;
+      overflow: hidden;
+    }
+
+    .interval-y-grid {
+      position: absolute;
+      top: 1.5rem;
+      bottom: 1.8rem;
+      left: 2.6rem;
+      right: 0;
+      pointer-events: none;
+      border-top: 1px dashed rgba(31, 94, 59, 0.2);
+    }
+
+    .interval-y-grid-mid {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      border-top: 1px dashed rgba(31, 94, 59, 0.2);
+    }
+
+    .interval-y-axis {
+      position: absolute;
+      top: 1.5rem;
+      bottom: 1.8rem;
+      left: 0.4rem;
+      width: 1.8rem;
+      pointer-events: none;
+    }
+
+    .interval-y-axis span {
+      position: absolute;
+      right: 0;
+      color: var(--muted);
+      font-size: 0.75rem;
+      line-height: 1;
+    }
+
+    .interval-y-axis span:nth-child(1) { top: -0.35rem; }
+    .interval-y-axis span:nth-child(2) { top: calc(50% - 0.35rem); }
+    .interval-y-axis span:nth-child(3) { bottom: -0.35rem; }
+
+    .interval-bars {
+      position: relative;
+      display: grid;
+      grid-template-columns: repeat(57, minmax(0, 1fr));
+      align-items: end;
+      height: calc(100% - 1.8rem);
+      gap: 0;
+      padding: 0 0.4rem;
+      z-index: 1;
+    }
+
+    .interval-bar-item {
+      grid-row: 1;
+      align-self: end;
+      height: 100%;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      min-width: 0;
+    }
+
+    .interval-bar-stack {
+      width: 100%;
+      max-width: 0.9rem;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      height: 100%;
+    }
+
+    .interval-bar-fill {
+      width: 100%;
+      min-height: 0.35rem;
+      border-radius: 0.22rem 0.22rem 0 0;
+      background: linear-gradient(180deg, #c56c39 0%, #1f5e3b 100%);
+      box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.18) inset;
+    }
+
+    .interval-axis {
+      position: absolute;
+      left: 3.0rem;
+      right: 0.4rem;
+      bottom: 0.35rem;
+      color: var(--muted);
+      font-size: 0.78rem;
+      pointer-events: none;
+      z-index: 2;
+    }
+
+    .interval-axis::before {
+      content: "";
+      position: absolute;
+      left: -3.0rem;
+      right: 0;
+      top: -0.35rem;
+      height: 1px;
+      background: var(--border);
+    }
+
+    .interval-axis span {
+      position: absolute;
+      bottom: 0;
+      background: rgba(247, 246, 240, 0.9);
+      padding: 0 0.2rem;
+      white-space: nowrap;
+    }
+
+    .interval-empty {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--muted);
+      font-size: 0.92rem;
+      text-align: center;
+      padding: 1rem;
+    }
+
+    .interval-value {
+      font-weight: 700;
+      color: #11181f;
+      white-space: nowrap;
+      text-align: right;
+    }
+
+    .footer {
+      width: min(calc(100% - 2rem), var(--max));
+      margin: 0 auto 2rem;
+      color: var(--muted);
+      font-size: 0.9rem;
+    }
+
+    .error {
+      color: #8b1a1a;
+      background: #fff4f4;
+      border: 1px solid #f0c3c3;
+      border-radius: var(--radius);
+      padding: 0.85rem 1rem;
+      margin-top: 1rem;
+      display: none;
+    }
+
+    @media (max-width: 880px) {
+      .metrics-grid, .camera-grid { grid-template-columns: 1fr; }
+      .banner-inner { display: grid; }
+      .status-pill { justify-self: start; }
+      .interval-chart-wrap { height: 10rem; }
+      .interval-axis { font-size: 0.72rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="banner">
+    <div class="banner-inner">
+      <div>
+        <p class="agency">U.S. DOT Volpe Center</p>
+        <h1 class="title">Grand Canyon National Park</h1>
+        <p class="subtle">Live camera view and daily queue metrics sourced from the live feed on GitHub.</p>
+      </div>
+      <div class="status-pill" id="syncPill"><span class="dot" aria-hidden="true"></span><span id="syncText">Loading latest data</span></div>
+    </div>
+  </header>
+
+  <main>
+    <div class="container grid">
+      <section class="hero">
+        <aside class="card" aria-labelledby="summaryHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="summaryHeading">Queue Summary</h2>
+          </div>
+          <div class="card-body grid" id="metrics">
+            <div class="metrics-grid">
+              <div class="metric">
+                <p class="metric-label">Current timestamp (MST)</p>
+                <p class="metric-value" id="lastSynced">--</p>
+                <p class="metric-note" id="lastSyncedNote">Feed refreshes about every 15 minutes</p>
+              </div>
+              <div class="metric metric-lanes">
+                <p class="metric-label">Current Queue</p>
+                <div class="lane-counts" aria-label="Current queue by lane">
+                  <div class="lane-row">
+                    <div class="lane-cell">
+                      <span class="lane-tag">A</span>
+                      <span class="lane-count" id="laneA">--</span>
+                    </div>
+                    <div class="lane-cell">
+                      <span class="lane-tag">B</span>
+                      <span class="lane-count" id="laneB">--</span>
+                    </div>
+                    <div class="lane-cell">
+                      <span class="lane-tag">C</span>
+                      <span class="lane-count" id="laneC">--</span>
+                    </div>
+                    <div class="lane-cell">
+                      <span class="lane-tag">D</span>
+                      <span class="lane-count" id="laneD">--</span>
+                    </div>
+                  </div>
+                  <div class="lane-row lane-row-total">
+                    <div class="lane-cell lane-cell-total">
+                      <span class="lane-tag">E Total</span>
+                      <span class="lane-count" id="laneTotal">--</span>
+                    </div>
+                  </div>
+                </div>
+                <p class="metric-note">From the latest published feed</p>
+              </div>
+              <div class="metric">
+                <p class="metric-label">Peak queue today</p>
+                <p class="metric-value" id="peakQueue">--</p>
+                <p class="metric-note" id="peakQueueNote">Resolved from archivefeed.csv and archive rows</p>
+              </div>
+              <div class="metric">
+                <p class="metric-label">Vehicles Detected on SR 64</p>
+                <p class="metric-value" id="entranceRoadCount">--</p>
+                <p class="metric-note">From the latest published feed</p>
+              </div>
+            </div>
+            <div class="interval-chart">
+              <p class="section-title">Queue by 15-minute interval (6 AM - 8 PM)</p>
+              <div class="interval-chart-wrap" id="intervalChartWrap" aria-label="Queue by 15-minute interval chart, 6am to 8pm">
+                <div class="interval-y-grid" aria-hidden="true"><div class="interval-y-grid-mid"></div></div>
+                <div class="interval-y-axis" id="intervalYAxis" aria-hidden="true">
+                  <span>0</span>
+                  <span>0</span>
+                  <span>0</span>
+                </div>
+                <div class="interval-bars" id="intervalBars"></div>
+                <div class="interval-axis" aria-hidden="true">
+                  <span style="left: 0%; transform: translateX(0);">6a</span>
+                  <span style="left: 25%; transform: translateX(-50%);">9:30a</span>
+                  <span style="left: 50%; transform: translateX(-50%);">1p</span>
+                  <span style="left: 75%; transform: translateX(-50%);">4:30p</span>
+                  <span style="left: 100%; transform: translateX(-100%);">8p</span>
+                </div>
+                <div class="interval-empty" id="intervalEmpty" aria-hidden="true"></div>
+              </div>
+            </div>
+          </div>
+          <div class="error" id="errorBox" role="status" aria-live="polite"></div>
+        </aside>
+      </section>
+
+      <section class="camera-grid">
+        <article class="card" aria-labelledby="entranceCameraHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="entranceCameraHeading">South Entrance Cam</h2>
+          </div>
+          <img
+            id="cameraImage"
+            class="camera-frame"
+            src="data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=="
+            alt="Latest annotated South Entrance camera view at Grand Canyon National Park"
+            loading="eager"
+          />
+          <a class="camera-link" href="https://www.nps.gov/media/webcam/view.htm?id=9B5FC6BA-9FE6-EC6B-61637825D562D367&r=/grca/learn/photosmultimedia/webcams.htm" target="_blank" rel="noopener noreferrer">
+            Open the live camera source
+          </a>
+          <p class="camera-caption">The image above displays the latest annotated South Entrance camera snapshot.</p>
+          <p class="camera-caption">Click the link above to view the live feed.</p>
+        </article>
+
+        <article class="card" aria-labelledby="secondaryCamHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="secondaryCamHeading">AZ DOT</h2>
+          </div>
+          <img
+            id="azdotCameraImage"
+            class="camera-frame"
+            src="https://raw.githubusercontent.com/AI-Rapid-Prototyping/Public-Lands-Computer-Vision/main/GRCA/azdot_latest_annotated.jpg"
+            alt="Latest annotated AZ DOT camera view"
+            loading="eager"
+          />
+          <a class="camera-link" href="https://www.nps.gov/media/webcam/view.htm?id=7D6A3936-E1C5-C480-4FA08472583AA182&r=/grca/learn/photosmultimedia/webcams.htm" target="_blank" rel="noopener noreferrer">
+            Open the live camera source
+          </a>
+          <p class="camera-caption">The image above displays the latest annotated AZ DOT camera snapshot.</p>
+          <p class="camera-caption">State Route 64 (Mile 235.15)</p>
+          <p class="camera-caption">Click the link above to view the live feed.</p>
+        </article>
+      </section>
+
+      <section class="feed-section">
+        <section class="card" aria-labelledby="feedHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="feedHeading">Latest GitHub Feed</h2>
+          </div>
+          <div class="card-body">
+            <p class="section-title">Published status</p>
+            <ul class="feed" id="feedList">
+              <li><span class="feed-label">Status</span><span class="feed-text" id="feedStatus">Loading...</span></li>
+              <li><span class="feed-label">Feed Timestamp (MST)</span><span class="feed-text" id="feedTimestamp">--</span></li>
+              <li><span class="feed-label">Message</span><span class="feed-text" id="feedMessage">--</span></li>
+            </ul>
+          </div>
+        </section>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    Data source: U.S. DOT Volpe GitHub feed and archive CSV for Grand Canyon National Park.
+  </footer>
+
+  <script>
+    const REPOSITORY = "AI-Rapid-Prototyping/Public-Lands-Computer-Vision";
+    const BRANCH = "main";
+    const FEED_PATH = "GRCA/grca_latest_feed.txt";
+    const ARCHIVE_PATH = "GRCA/archivefeed.csv";
+    const RAW_BASE_URL = `https://raw.githubusercontent.com/${REPOSITORY}/${BRANCH}`;
+    const IMAGE_BASE_URL = `https://raw.githubusercontent.com/${REPOSITORY}/${BRANCH}/GRCA/grca_latest_annotated.jpg`;
+    const AZDOT_IMAGE_BASE_URL = `https://raw.githubusercontent.com/${REPOSITORY}/${BRANCH}/GRCA/azdot_latest_annotated.jpg`;
+    const GITHUB_API_BASE = `https://api.github.com/repos/${REPOSITORY}/contents`;
+    const ARIZONA_TIME_ZONE = "America/Phoenix";
+    const USER_TIME_ZONE = Intl.DateTimeFormat().resolvedOptions().timeZone || "local time";
+    const FEED_REFRESH_INTERVAL_MS = 15000;
+    const ARCHIVE_REFRESH_INTERVAL_MS = 60000;
+    const IMAGE_REFRESH_INTERVAL_MS = 15000;
+    const INTERVAL_WINDOW_START_MINUTE = 6 * 60;
+    const INTERVAL_WINDOW_END_MINUTE = 20 * 60;
+    const INTERVAL_WINDOW_SLOT_COUNT = ((INTERVAL_WINDOW_END_MINUTE - INTERVAL_WINDOW_START_MINUTE) / 15) + 1;
+    const INTERVAL_AXIS_LABELS = [
+      { minuteOfDay: 6 * 60, label: "6a" },
+      { minuteOfDay: 10 * 60, label: "10a" },
+      { minuteOfDay: 14 * 60, label: "2p" },
+      { minuteOfDay: 18 * 60, label: "6p" },
+      { minuteOfDay: 20 * 60, label: "8p" }
+    ];
+
+    const els = {
+      syncText: document.getElementById("syncText"),
+      lastSynced: document.getElementById("lastSynced"),
+      lastSyncedNote: document.getElementById("lastSyncedNote"),
+      laneA: document.getElementById("laneA"),
+      laneB: document.getElementById("laneB"),
+      laneC: document.getElementById("laneC"),
+      laneD: document.getElementById("laneD"),
+      laneTotal: document.getElementById("laneTotal"),
+      peakQueue: document.getElementById("peakQueue"),
+      peakQueueNote: document.getElementById("peakQueueNote"),
+      entranceRoadCount: document.getElementById("entranceRoadCount"),
+      intervalYAxis: document.getElementById("intervalYAxis"),
+      intervalBars: document.getElementById("intervalBars"),
+      intervalEmpty: document.getElementById("intervalEmpty"),
+      feedStatus: document.getElementById("feedStatus"),
+      feedTimestamp: document.getElementById("feedTimestamp"),
+      feedMessage: document.getElementById("feedMessage"),
+      errorBox: document.getElementById("errorBox"),
+      cameraImage: document.getElementById("cameraImage"),
+      azdotCameraImage: document.getElementById("azdotCameraImage")
+    };
+
+    const formatArizonaDateTime = (value) => {
+      if (!value) return "--";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: ARIZONA_TIME_ZONE
+      }).format(date);
+    };
+
+    const formatArizonaDateTimeWithZone = (value) => {
+      if (!value) return "--";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      const timeZoneParts = new Intl.DateTimeFormat(undefined, {
+        timeZone: ARIZONA_TIME_ZONE,
+        timeZoneName: "short"
+      }).formatToParts(date);
+      const timeZoneName = timeZoneParts.find((part) => part.type === "timeZoneName")?.value || USER_TIME_ZONE;
+
+      return `${new Intl.DateTimeFormat(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+        timeZone: ARIZONA_TIME_ZONE
+      }).format(date)} (${timeZoneName})`;
+    };
+
+    const formatArizonaDateKey = (value) => {
+      if (!value) return null;
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      return new Intl.DateTimeFormat("en-CA", {
+        timeZone: ARIZONA_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(date);
+    };
+
+    const formatTimeOnlyArizona = (value) => {
+      if (!value) return "--";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat(undefined, {
+        timeStyle: "short",
+        timeZone: ARIZONA_TIME_ZONE
+      }).format(date);
+    };
+
+    const getArizonaParts = (value) => {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return null;
+      const parts = new Intl.DateTimeFormat("en-US", {
+        timeZone: ARIZONA_TIME_ZONE,
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: false
+      }).formatToParts(date);
+      const values = {};
+      for (const part of parts) {
+        if (part.type !== "literal") values[part.type] = part.value;
+      }
+      return values;
+    };
+
+    const roundArizonaMinuteBucket = (value) => {
+      const parts = getArizonaParts(value);
+      if (!parts) return null;
+
+      const hour = Number(parts.hour);
+      const minute = Number(parts.minute);
+      const roundedMinuteOfDay = Math.round((hour * 60 + minute) / 15) * 15;
+      const clampedMinuteOfDay = Math.min(roundedMinuteOfDay, 1439);
+      const displayHour24 = Math.floor(clampedMinuteOfDay / 60) % 24;
+      const displayMinute = clampedMinuteOfDay % 60;
+      const displayHour12 = displayHour24 % 12 || 12;
+      const suffix = displayHour24 >= 12 ? "PM" : "AM";
+      const paddedMinute = String(displayMinute).padStart(2, "0");
+
+      return {
+        minuteOfDay: clampedMinuteOfDay,
+        sortMinutes: clampedMinuteOfDay,
+        label: `${displayHour12}:${paddedMinute} ${suffix}`
+      };
+    };
+
+    const setError = (message) => {
+      els.errorBox.textContent = message;
+      els.errorBox.style.display = message ? "block" : "none";
+    };
+
+    const archiveState = {
+      rows: [],
+      loadedAt: 0
+    };
+
+    async function fetchGithubText(path, cacheKey = Date.now()) {
+      const url = `${RAW_BASE_URL}/${path}?cb=${encodeURIComponent(cacheKey)}`;
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
+      return response.text();
+    }
+
+    async function fetchGithubJson(path, cacheKey = Date.now()) {
+      const url = `${GITHUB_API_BASE}/${path}?ref=${encodeURIComponent(BRANCH)}&cb=${encodeURIComponent(cacheKey)}`;
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
+      return response.json();
+    }
+
+    async function refreshCameraImage(cacheKey) {
+      try {
+        els.cameraImage.src = `${IMAGE_BASE_URL}?cb=${encodeURIComponent(cacheKey)}`;
+        if (els.azdotCameraImage) {
+          els.azdotCameraImage.src = `${AZDOT_IMAGE_BASE_URL}?cb=${encodeURIComponent(cacheKey)}`;
+        }
+      } catch (error) {
+        console.warn("Camera image refresh failed", error);
+      }
+    }
+
+    function updateFeedPreview(text) {
+      const lines = text.split(/\r?\n/).filter(Boolean);
+      const map = new Map();
+      for (const line of lines) {
+        const idx = line.indexOf(":");
+        if (idx > 0) {
+          map.set(line.slice(0, idx).trim(), line.slice(idx + 1).trim());
+        }
+      }
+      els.feedStatus.textContent = map.get("status") || "--";
+      els.feedTimestamp.textContent = formatArizonaDateTime(map.get("timestamp_utc"));
+      els.feedMessage.textContent = map.get("message") || "--";
+      return {
+        timestampUtc: map.get("timestamp_utc") || null,
+        lane1: Number(map.get("vehicles_in_lane_1") || 0),
+        lane2: Number(map.get("vehicles_in_lane_2") || 0),
+        lane3: Number(map.get("vehicles_in_lane_3") || 0),
+        lane4: Number(map.get("vehicles_in_lane_4") || 0),
+        inLine: Number(map.get("vehicles_in_line") || 0),
+        entranceRoad: Number(map.get("on_entrance_road") || 0)
+      };
+    }
+
+    function parseArchiveCsv(csvText) {
+      const lines = csvText.split(/\r?\n/).filter(Boolean);
+      if (lines.length < 2) return [];
+
+      const rows = [];
+      const header = lines[0].split(",").map((value) => value.trim());
+      for (let i = 1; i < lines.length; i += 1) {
+        const cols = lines[i].split(",");
+        if (cols.length !== header.length) continue;
+        const row = {};
+        for (let j = 0; j < header.length; j += 1) {
+          row[header[j]] = cols[j].trim();
+        }
+        rows.push(row);
+      }
+      return rows;
+    }
+
+    function buildIntervalSummary(rows, dayKey) {
+      const byInterval = new Map();
+      for (const row of rows) {
+        const rowKey = formatArizonaDateKey(row.timestamp_utc);
+        if (rowKey !== dayKey) continue;
+
+        const parts = getArizonaParts(row.timestamp_utc);
+        const rounded = roundArizonaMinuteBucket(row.timestamp_utc);
+        if (!parts || !rounded) continue;
+        if (rounded.minuteOfDay < INTERVAL_WINDOW_START_MINUTE || rounded.minuteOfDay > INTERVAL_WINDOW_END_MINUTE) continue;
+
+        const intervalKey = `${parts.year}-${parts.month}-${parts.day} ${rounded.label}`;
+        const current = byInterval.get(intervalKey) || {
+          sortMinutes: rounded.sortMinutes,
+          minuteOfDay: rounded.minuteOfDay,
+          label: rounded.label,
+          total: Number(row.vehicles_in_line ?? row.total_vehicles_detected ?? 0),
+          sourceTimestamp: row.timestamp_utc
+        };
+        const sourceTimestamp = new Date(row.timestamp_utc);
+        if (!Number.isNaN(sourceTimestamp.getTime()) && sourceTimestamp > new Date(current.sourceTimestamp)) {
+          current.total = Number(row.vehicles_in_line ?? row.total_vehicles_detected ?? 0);
+          current.sourceTimestamp = row.timestamp_utc;
+        }
+        byInterval.set(intervalKey, current);
+      }
+
+      return [...byInterval.values()].sort((a, b) => a.sortMinutes - b.sortMinutes);
+    }
+
+    function renderIntervalYAxis(maxTotal = 0) {
+      if (!els.intervalYAxis) return;
+
+      const peak = Math.max(0, Number(maxTotal) || 0);
+      const labels = [peak, Math.round(peak / 2), 0];
+      els.intervalYAxis.innerHTML = labels.map((label, index) => {
+        const position = index === 0 ? "top: -0.35rem;" : index === 1 ? "top: calc(50% - 0.35rem);" : "bottom: -0.35rem;";
+        return `<span style="${position}">${label}</span>`;
+      }).join("");
+    }
+
+    async function loadArchiveRows(cacheKey) {
+      const rows = parseArchiveCsv(await fetchGithubText(ARCHIVE_PATH, cacheKey));
+
+      try {
+        const archiveEntries = await fetchGithubJson("GRCA/archive", cacheKey);
+        if (Array.isArray(archiveEntries)) {
+          const archivedCsvs = archiveEntries.filter((entry) => entry && entry.type === "file" && /\.csv$/i.test(entry.name));
+          const archivedRows = await Promise.all(archivedCsvs.map(async (entry) => {
+            for (let attempt = 0; attempt < 2; attempt += 1) {
+              try {
+                return parseArchiveCsv(await fetchGithubText(entry.path, cacheKey));
+              } catch (error) {
+                if (attempt === 1) throw error;
+              }
+            }
+            return [];
+          }));
+          rows.push(...archivedRows.flat());
+        }
+      } catch (error) {
+        console.warn("Archive directory unavailable or empty", error);
+      }
+
+      return rows;
+    }
+
+    async function getArchiveRows(cacheKey) {
+      const now = Date.now();
+      if (archiveState.rows.length > 0 && now - archiveState.loadedAt < ARCHIVE_REFRESH_INTERVAL_MS) {
+        return archiveState.rows;
+      }
+
+      archiveState.rows = await loadArchiveRows(cacheKey);
+      archiveState.loadedAt = now;
+      return archiveState.rows;
+    }
+
+    function getDailyPeak(rows, dayKey) {
+      let best = null;
+      for (const row of rows) {
+        const rowKey = formatArizonaDateKey(row.timestamp_utc);
+        if (rowKey !== dayKey) continue;
+
+        const totalInLine = Number(row.vehicles_in_line ?? row.total_vehicles_detected ?? 0);
+        if (!best || totalInLine > best.peak || (totalInLine === best.peak && new Date(row.timestamp_utc) > new Date(best.timestampUtc))) {
+          best = {
+            peak: totalInLine,
+            lane1: Number(row.vehicles_in_lane_1 ?? 0),
+            lane2: Number(row.vehicles_in_lane_2 ?? 0),
+            total: totalInLine,
+            timestampUtc: row.timestamp_utc
+          };
+        }
+      }
+      return best;
+    }
+
+    async function loadDashboard() {
+      const cacheKey = Date.now();
+      let feedLoaded = false;
+      let current = null;
+
+      try {
+        const feedText = await fetchGithubText(FEED_PATH, cacheKey);
+        current = updateFeedPreview(feedText);
+        els.lastSynced.textContent = `Updated ${formatArizonaDateTimeWithZone(current.timestampUtc)}`;
+        els.lastSyncedNote.textContent = current.timestampUtc ? "Feed refreshes about every 15 minutes" : "Timestamp unavailable";
+        els.laneA.textContent = `${current.lane1}`;
+        els.laneB.textContent = `${current.lane2}`;
+        els.laneC.textContent = `${current.lane3}`;
+        els.laneD.textContent = `${current.lane4}`;
+        els.laneTotal.textContent = `${current.inLine}`;
+        els.entranceRoadCount.textContent = `${current.entranceRoad}`;
+        feedLoaded = true;
+      } catch (error) {
+        console.error(error);
+        els.syncText.textContent = "Feed unavailable";
+        setError("The dashboard could not reach the published GitHub feeds. The camera remains available, but metrics are temporarily unavailable.");
+        return;
+      }
+
+      if (feedLoaded) {
+        void refreshCameraImage(cacheKey);
+      }
+
+      try {
+        const archiveRows = await getArchiveRows(cacheKey);
+        const currentDayKey = formatArizonaDateKey(current.timestampUtc);
+        const peak = getDailyPeak(archiveRows, currentDayKey);
+        const intervals = buildIntervalSummary(archiveRows, currentDayKey);
+        const filteredIntervals = intervals.filter((entry) => entry.minuteOfDay >= INTERVAL_WINDOW_START_MINUTE && entry.minuteOfDay <= INTERVAL_WINDOW_END_MINUTE);
+
+        if (peak) {
+          els.peakQueue.textContent = `${peak.peak}`;
+          els.peakQueueNote.textContent = `Detected ${formatTimeOnlyArizona(peak.timestampUtc)} MST on ${formatArizonaDateKey(peak.timestampUtc)}`;
+        } else {
+          els.peakQueue.textContent = "--";
+          els.peakQueueNote.textContent = "No matching rows found for the feed day";
+        }
+
+        if (filteredIntervals.length > 0) {
+          const maxTotal = Math.max(...filteredIntervals.map((entry) => entry.total), 1);
+          renderIntervalYAxis(maxTotal);
+          els.intervalEmpty.style.display = "none";
+          els.intervalBars.innerHTML = filteredIntervals.map((entry) => {
+            const height = Math.max((entry.total / maxTotal) * 100, entry.total > 0 ? 8 : 0);
+            const slot = Math.min(Math.floor(((entry.minuteOfDay ?? INTERVAL_WINDOW_START_MINUTE) - INTERVAL_WINDOW_START_MINUTE) / 15), INTERVAL_WINDOW_SLOT_COUNT - 1);
+            const tooltip = `${entry.label} - ${entry.total} in line`;
+            return `<div class="interval-bar-item" style="grid-column: ${slot + 1};" title="${tooltip}" aria-label="${tooltip}"><div class="interval-bar-stack"><span class="interval-bar-fill" style="height: ${height.toFixed(1)}%"></span></div></div>`;
+          }).join("");
+        } else {
+          renderIntervalYAxis(0);
+          els.intervalBars.innerHTML = "";
+          els.intervalEmpty.style.display = "flex";
+        }
+      } catch (error) {
+        console.warn("Archive data unavailable", error);
+        els.peakQueue.textContent = "--";
+        els.peakQueueNote.textContent = "Archive data temporarily unavailable";
+        renderIntervalYAxis(0);
+        els.intervalBars.innerHTML = "";
+        els.intervalEmpty.style.display = "flex";
+      }
+
+      els.syncText.textContent = `Updated ${formatArizonaDateTimeWithZone(current.timestampUtc)}`;
+      setError("");
+    }
+
+    loadDashboard();
+    setInterval(loadDashboard, FEED_REFRESH_INTERVAL_MS);
+    window.addEventListener("focus", loadDashboard);
+    document.addEventListener("visibilitychange", () => {
+      if (!document.hidden) loadDashboard();
+    });
+  </script>
+</body>
+</html>

@@ -10,9 +10,9 @@ import cv2
 import numpy as np
 
 from count_grca import (
-    DEFAULT_FALLBACK_IMAGE_URL,
+    DEFAULT_AZDOT_FALLBACK_IMAGE_URL,
+    DEFAULT_AZDOT_WEBCAM_PAGE_URL,
     DEFAULT_USER_AGENT,
-    DEFAULT_WEBCAM_PAGE_URL,
     build_headers,
     download_image,
     fetch_bytes,
@@ -20,10 +20,11 @@ from count_grca import (
 )
 
 
-DEFAULT_OUTPUT_PATH = Path(__file__).resolve().parent / "grca_lanes.json"
-DEFAULT_WINDOW_NAME = "GRCA Lane Labeler"
+DEFAULT_OUTPUT_PATH = Path(__file__).resolve().parent / "azdot_lanes.json"
+DEFAULT_WINDOW_NAME = "AZ DOT Lane Labeler"
 DEFAULT_MAX_DISPLAY_WIDTH = 3200
 DEFAULT_MAX_DISPLAY_HEIGHT = 1800
+DEFAULT_LANE_LABEL = "AZ DOT"
 
 
 @dataclass(frozen=True)
@@ -43,10 +44,10 @@ class LaneFile:
 
 
 def parse_args(argv: Optional[list[str]] = None) -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Interactive helper for defining Grand Canyon lane polygons")
+    parser = argparse.ArgumentParser(description="Interactive helper for defining the AZ DOT entrance road polygon")
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT_PATH, help="Where to save the lane JSON")
-    parser.add_argument("--webcam-page-url", default=DEFAULT_WEBCAM_PAGE_URL, help="Web page used to resolve the current snapshot")
-    parser.add_argument("--fallback-image-url", default=DEFAULT_FALLBACK_IMAGE_URL, help="Fallback snapshot URL")
+    parser.add_argument("--webcam-page-url", default=DEFAULT_AZDOT_WEBCAM_PAGE_URL, help="Web page used to resolve the current snapshot")
+    parser.add_argument("--fallback-image-url", default=DEFAULT_AZDOT_FALLBACK_IMAGE_URL, help="Fallback snapshot URL")
     parser.add_argument("--user-agent", default=DEFAULT_USER_AGENT, help="User-Agent for webcam requests")
     parser.add_argument("--image-path", type=Path, default=None, help="Use a local image instead of downloading the live snapshot")
     parser.add_argument("--append", action="store_true", help="Append to an existing JSON file instead of starting over")
@@ -128,7 +129,7 @@ def draw_polygon(
         cv2.putText(image, label, (dx + 6, dy - 6), cv2.FONT_HERSHEY_SIMPLEX, 0.6, color, 2, cv2.LINE_AA)
 
 
-def draw_overlay(canvas: np.ndarray, labeler: "GRCALaneLabeler") -> np.ndarray:
+def draw_overlay(canvas: np.ndarray, labeler: "AZDOTLaneLabeler") -> np.ndarray:
     image = canvas.copy()
     y = 28
     for line in [
@@ -181,7 +182,7 @@ def load_existing_lanes(path: Path) -> tuple[str, int, int, list[LaneDefinition]
     return image_url, image_width, image_height, lanes
 
 
-class GRCALaneLabeler:
+class AZDOTLaneLabeler:
     def __init__(self, image: np.ndarray, scale: float, image_url: str, lanes: list[LaneDefinition], output_path: Path) -> None:
         self.image = image
         self.scale = scale
@@ -211,7 +212,7 @@ class GRCALaneLabeler:
             return
 
         default_index = len(self.lanes) + 1
-        default_label = f"Lane {default_index}"
+        default_label = DEFAULT_LANE_LABEL if default_index == 1 else f"Lane {default_index}"
         print(f"Completed lane with {len(self.current_points)} points for {default_label}")
         try:
             entered = input(f"Label for {default_label} [{default_label}]: ").strip()
@@ -262,12 +263,12 @@ def main(argv: Optional[list[str]] = None) -> int:
             image_url = existing_image_url
 
     display_image, scale = fit_image_for_display(image, args.max_display_width, args.max_display_height)
-    labeler = GRCALaneLabeler(display_image, scale, image_url, lanes, args.output)
+    labeler = AZDOTLaneLabeler(display_image, scale, image_url, lanes, args.output)
 
     cv2.namedWindow(labeler.window_name, cv2.WINDOW_NORMAL)
     cv2.setMouseCallback(labeler.window_name, labeler.on_mouse)
 
-    print("Click points around each lane boundary in order around the polygon.")
+    print("Click points around the AZ DOT entrance road boundary in order around the polygon.")
     print(f"Saving to {args.output}")
 
     while True:
