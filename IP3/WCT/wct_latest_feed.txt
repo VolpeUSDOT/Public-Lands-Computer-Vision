@@ -1,12 +1,12 @@
 Willow Creek Trail Parking Lot webcam vehicle feed
 status: ok
-timestamp_utc: 2026-07-16T01:17:18.280017+00:00
+timestamp_utc: 2026-07-16T01:18:20.017593+00:00
 webcam_page_url: https://www.ipcamlive.com/willowcreektrail
 image_url: https://s94.ipcamlive.com/streams/5etqmifrhavnjkdwc/snapshot.jpg
 model_path: yolov8m.pt
 vehicle_count: 2
-tracked_vehicle_count: 2
-average_vehicle_dwell_seconds: 505.09342992305756
+tracked_vehicle_count: 3
+average_vehicle_dwell_seconds: 379.2832766373952
 occupied_spot_count: 2
 empty_spot_count: 15
 message: Detected 2 vehicles; occupied 2 spots
@@ -14,8 +14,8 @@ spots:
 - Spot 1 (spot_1): Empty since 2026-07-15T21:26:26.643038+00:00
 - Spot 2 (spot_2): Empty since 2026-07-16T00:44:19.597132+00:00
 - Spot 3 (spot_3): Empty since 2026-07-15T22:40:07.061940+00:00
-- Spot 4 (spot_4): Occupied since 2026-07-16T01:17:18.280017+00:00
-  vehicle: car (track_id=829, confidence=0.695) bound=[384.9931335449219, 319.29718017578125, 450.8000183105469, 366.02984619140625] dwell 1010 sec
+- Spot 4 (spot_4): Occupied since 2026-07-16T01:18:20.017593+00:00
+  vehicle: bus (track_id=834, confidence=0.409) bound=[384.6839599609375, 319.0187683105469, 452.35791015625, 367.4797668457031] dwell 0 sec
 - Spot 5 (spot_5): Empty since 2026-07-16T01:06:20.286517+00:00
 - Spot 6 (spot_6): Empty since 2026-07-16T00:26:19.545449+00:00
 - Spot 7 (spot_7): Empty since 2026-07-16T00:53:19.518186+00:00
@@ -23,7 +23,7 @@ spots:
 - Spot 9 (spot_9): Empty since 2026-07-16T00:41:18.667748+00:00
 - Spot 10 (spot_10): Empty since 2026-07-15T22:48:20.667937+00:00
 - Spot 11 (spot_11): Occupied since 2026-07-16T01:17:18.280017+00:00
-  vehicle: car (track_id=833, confidence=0.419) bound=[112.52421569824219, 317.57421875, 144.7110137939453, 341.1904296875] dwell 0 sec
+  vehicle: car (track_id=833, confidence=0.815) bound=[111.906005859375, 317.204345703125, 159.6788330078125, 340.568603515625] dwell 63 sec
 - Spot 12 (spot_12): Empty since 2026-07-15T20:28:55.502929+00:00
 - Spot 13 (spot_13): Empty since 2026-07-15T22:25:48.669474+00:00
 - Spot 14 (spot_14): Empty since 2026-07-16T01:00:26.072271+00:00
@@ -31,6 +31,6 @@ spots:
 - Spot 16 (spot_16): Empty since 2026-07-15T23:47:19.359895+00:00
 - Spot 17 (spot_17): Empty since 2026-07-15T22:07:56.995123+00:00
 detections:
-- car (class_id=2, confidence=0.695) xyxy=[384.9931335449219, 319.29718017578125, 450.8000183105469, 366.02984619140625] dwell 1010 sec
-- car (class_id=2, confidence=0.419) xyxy=[112.52421569824219, 317.57421875, 144.7110137939453, 341.1904296875] dwell 0 sec
+- car (class_id=2, confidence=0.815) xyxy=[111.906005859375, 317.204345703125, 159.6788330078125, 340.568603515625] dwell 63 sec
+- bus (class_id=5, confidence=0.409) xyxy=[384.6839599609375, 319.0187683105469, 452.35791015625, 367.4797668457031] dwell 0 sec
 output_schema: wct_parking_spot_occupancy_v1
