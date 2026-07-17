@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="color-scheme" content="light" />
+  <title>Logan Pass Parking Lot</title>
+  <link rel="stylesheet" href="glacier_site.css" />
+</head>
+<body data-view="camera" data-camera="logan_pass">
+  <header class="hero">
+    <div class="shell">
+      <section class="hero-panel">
+        <p class="eyebrow">Glacier National Park</p>
+        <h1 class="title" data-camera-title>Logan Pass Parking Lot</h1>
+        <p class="subtitle" data-camera-subtitle>Current queue plus parking availability for the Logan Pass lot.</p>
+        <div class="hero-row">
+          <div class="status-pill"><span class="dot" aria-hidden="true"></span><span data-sync-text>Loading latest data</span></div>
+          <nav class="page-nav" aria-label="Glacier pages">
+            <a class="page-link" data-nav-camera="logan_pass" href="logan_pass.html">Logan Pass</a>
+            <a class="page-link" data-nav-camera="west_entrance" href="west_entrance.html">West Entrance</a>
+            <a class="page-link" data-nav-camera="apgar_village" href="apgar_village.html">Apgar Village</a>
+            <a class="page-link" data-home-link href="index.html">Overview</a>
+          </nav>
+        </div>
+      </section>
+    </div>
+  </header>
+
+  <main>
+    <div class="shell layout">
+      <section class="grid-2">
+        <article class="card" aria-labelledby="cameraHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="cameraHeading">Latest annotated view</h2>
+          </div>
+          <img data-camera-image class="camera-frame" alt="Logan Pass annotated webcam image" loading="lazy" />
+          <div class="card-body camera-meta">
+            <div class="meta-row">
+              <span data-camera-label>--</span>
+              <span data-camera-timestamp>--</span>
+            </div>
+            <a class="camera-link" data-camera-source href="#" target="_blank" rel="noopener noreferrer">Open source webcam page</a>
+            <div class="error" data-error role="status" aria-live="polite"></div>
+          </div>
+        </article>
+
+        <aside class="card" aria-labelledby="summaryHeading">
+          <div class="card-head">
+            <h2 class="card-title" id="summaryHeading">Queue</h2>
+          </div>
+          <div class="card-body">
+            <div class="metric-grid">
+              <div class="metric">
+                <p class="metric-label">Current queue</p>
+                <p class="metric-value" data-current-queue>--</p>
+                <p class="metric-note">Cars detected in the frame</p>
+              </div>
+              <div class="metric">
+                <p class="metric-label">Peak today</p>
+                <p class="metric-value" data-peak-queue>--</p>
+                <p class="metric-note">Maximum queue from today's history</p>
+              </div>
+              <div class="metric">
+                <p class="metric-label">Parking spots available</p>
+                <p class="metric-value" data-parking-spots>--</p>
+                <p class="metric-note">Based on the configured lot capacity</p>
+              </div>
+            </div>
+
+            <div style="height: 1rem;"></div>
+
+            <ul class="lane-list" data-lane-list aria-label="Lane summary"></ul>
+          </div>
+        </aside>
+      </section>
+
+      <section class="card" aria-labelledby="feedHeading">
+        <div class="card-head">
+          <h2 class="card-title" id="feedHeading">Feed details</h2>
+        </div>
+        <div class="card-body">
+          <ul class="feed">
+            <li><span class="feed-label">Status</span><span class="feed-text" data-feed-status>--</span></li>
+            <li><span class="feed-label">Timestamp UTC</span><span class="feed-text" data-feed-timestamp>--</span></li>
+            <li><span class="feed-label">Message</span><span class="feed-text" data-feed-message>--</span></li>
+            <li><span class="feed-label">Image URL</span><span class="feed-text" data-feed-image-url>--</span></li>
+            <li><span class="feed-label">Current queue</span><span class="feed-text" data-feed-current-queue>--</span></li>
+            <li><span class="feed-label">Peak today</span><span class="feed-text" data-feed-peak-queue>--</span></li>
+            <li><span class="feed-label">Lane queue</span><span class="feed-text" data-feed-lane-queue>--</span></li>
+            <li><span class="feed-label">Parking spots</span><span class="feed-text" data-feed-parking>--</span></li>
+          </ul>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer">
+    Logan Pass uses the published GitHub feed files in <code>IP3/Glacier_National_Park</code>.
+  </footer>
+
+  <script src="glacier_site.js"></script>
+</body>
+</html>
