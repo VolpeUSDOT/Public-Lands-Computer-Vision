@@ -1,15 +1,20 @@
 Arches webcam vehicle feed
 status: ok
-timestamp_utc: 2026-07-29T14:15:16.699959+00:00
-total_vehicles_detected: 0
-vehicles_in_lane_1: 0
-vehicles_in_lane_2: 0
-vehicles_in_line: 0
+timestamp_utc: 2026-07-29T14:30:17.199950+00:00
+total_vehicles_detected: 5
+vehicles_in_lane_1: 1
+vehicles_in_lane_2: 2
+vehicles_in_line: 3
 on_entrance_road: 0
-message: Detected 0 vehicles anywhere in frame; lane 1=0, lane 2=0, in line=0, on_entrance_road=0
-detections: none
+message: Detected 5 vehicles anywhere in frame; lane 1=1, lane 2=2, in line=3, on_entrance_road=0
+detections:
+- car (class_id=2, confidence=0.952) xyxy=[1673.3092041015625, 911.4009399414062, 2460.649169921875, 1451.0675048828125]
+- car (class_id=2, confidence=0.831) xyxy=[378.7954406738281, 1005.9682006835938, 592.9371337890625, 1323.3006591796875]
+- car (class_id=2, confidence=0.661) xyxy=[1706.7442626953125, 570.6242065429688, 1743.5947265625, 595.5108032226562]
+- car (class_id=2, confidence=0.644) xyxy=[1555.253173828125, 577.3999633789062, 1609.8525390625, 617.9922485351562]
+- car (class_id=2, confidence=0.614) xyxy=[1466.5960693359375, 689.2074584960938, 1829.8062744140625, 1030.829833984375]
 lane_breakdown:
-- vehicles_in_lane_1: 0
-- vehicles_in_lane_2: 0
-- vehicles_in_line: 0
+- vehicles_in_lane_1: 1
+- vehicles_in_lane_2: 2
+- vehicles_in_line: 3
 output_schema: arch_lane_vehicle_feed_v1
