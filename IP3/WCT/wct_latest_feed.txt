@@ -1,21 +1,23 @@
 Willow Creek Trail Parking Lot webcam vehicle feed
 status: ok
-timestamp_utc: 2026-08-05T10:19:13.163955+00:00
+timestamp_utc: 2026-08-05T10:20:12.744500+00:00
 webcam_page_url: https://www.ipcamlive.com/willowcreektrail
 image_url: https://s94.ipcamlive.com/streams/5e6cig4vfviwhpb87/snapshot.jpg
 model_path: yolov8m.pt
-vehicle_count: 0
-tracked_vehicle_count: 0
-average_vehicle_dwell_seconds: 
-occupied_spot_count: 0
-empty_spot_count: 17
-message: Detected 0 vehicles; occupied 0 spots
+vehicle_count: 2
+tracked_vehicle_count: 2
+average_vehicle_dwell_seconds: 0.0
+occupied_spot_count: 2
+empty_spot_count: 15
+message: Detected 2 vehicles; occupied 2 spots
 spots:
 - Spot 1 (spot_1): Empty since 2026-08-05T06:48:24.520276+00:00
 - Spot 2 (spot_2): Empty since 2026-08-05T06:48:24.520295+00:00
 - Spot 3 (spot_3): Empty since 2026-08-05T06:48:24.520301+00:00
-- Spot 4 (spot_4): Empty since 2026-08-05T10:19:13.163955+00:00
-- Spot 5 (spot_5): Empty since 2026-08-05T10:14:13.562856+00:00
+- Spot 4 (spot_4): Occupied since 2026-08-05T10:20:12.744500+00:00
+  vehicle: car (track_id=22, confidence=0.516) bound=[379.82318115234375, 350.1575012207031, 420.41229248046875, 369.2531433105469] dwell 0 sec
+- Spot 5 (spot_5): Occupied since 2026-08-05T10:20:12.744500+00:00
+  vehicle: car (track_id=23, confidence=0.367) bound=[330.49169921875, 343.94580078125, 365.48858642578125, 368.136474609375] dwell 0 sec
 - Spot 6 (spot_6): Empty since 2026-08-05T06:48:24.520313+00:00
 - Spot 7 (spot_7): Empty since 2026-08-05T06:48:24.520322+00:00
 - Spot 8 (spot_8): Empty since 2026-08-05T06:48:24.520326+00:00
@@ -28,4 +30,7 @@ spots:
 - Spot 15 (spot_15): Empty since 2026-08-05T06:48:24.520349+00:00
 - Spot 16 (spot_16): Empty since 2026-08-05T06:48:24.520352+00:00
 - Spot 17 (spot_17): Empty since 2026-08-05T06:48:24.520355+00:00
+detections:
+- car (class_id=2, confidence=0.516) xyxy=[379.82318115234375, 350.1575012207031, 420.41229248046875, 369.2531433105469] dwell 0 sec
+- car (class_id=2, confidence=0.367) xyxy=[330.49169921875, 343.94580078125, 365.48858642578125, 368.136474609375] dwell 0 sec
 output_schema: wct_parking_spot_occupancy_v1
