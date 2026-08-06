@@ -1,15 +1,16 @@
 Arches webcam vehicle feed
-status: error
-timestamp_utc: 2026-08-06T20:45:13.325240+00:00
-total_vehicles_detected: 0
+status: ok
+timestamp_utc: 2026-08-06T21:00:17.683201+00:00
+total_vehicles_detected: 1
 vehicles_in_lane_1: 0
-vehicles_in_lane_2: 0
-vehicles_in_line: 0
+vehicles_in_lane_2: 1
+vehicles_in_line: 1
 on_entrance_road: 0
-error: HTTPSConnectionPool(host='www.nps.gov', port=443): Max retries exceeded with url: /webcams-arch/arch_traffic.jpg?1782413491434=&_=20260806204553365401 (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f1334624f20>: Failed to establish a new connection: [Errno 101] Network is unreachable'))
-detections: none
+message: Detected 1 vehicles anywhere in frame; lane 1=0, lane 2=1, in line=1, on_entrance_road=0
+detections:
+- car (class_id=2, confidence=0.908) xyxy=[1684.5068359375, 876.108642578125, 2432.671142578125, 1451.0941162109375]
 lane_breakdown:
 - vehicles_in_lane_1: 0
-- vehicles_in_lane_2: 0
-- vehicles_in_line: 0
+- vehicles_in_lane_2: 1
+- vehicles_in_line: 1
 output_schema: arch_lane_vehicle_feed_v1
