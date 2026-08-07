@@ -1,45 +1,81 @@
-const GLACIER_REPO = "VolpeUSDOT/Public-Lands-Computer-Vision";
-const GLACIER_BRANCH = "main";
-
 const GLACIER_CAMERAS = {
   logan_pass: {
     key: "logan_pass",
-    name: "Logan Pass",
     title: "Logan Pass Parking Lot",
     page: "logan_pass.html",
     jsonPath: "glacier_latest_feed.json",
     feedPath: "glacier_latest_feed.txt",
-    historyPath: "glacier_latest_history.jsonl",
     imagePath: "glacier_latest_annotated.jpg",
     webcamPageUrl: "https://www.nps.gov/media/webcam/view.htm?id=325AE6AF-BAEB-F65D-EF3D638BF683E78E&r=/glac/learn/photosmultimedia/webcams.htm",
     parkingSpotsTotal: 100,
   },
   west_entrance: {
     key: "west_entrance",
-    name: "West Entrance",
     title: "West Entrance",
     page: "west_entrance.html",
     jsonPath: "glacier_west_entrance_feed.json",
     feedPath: "glacier_west_entrance_feed.txt",
-    historyPath: "glacier_west_entrance_history.jsonl",
     imagePath: "glacier_west_entrance_annotated.jpg",
     webcamPageUrl: "https://www.nps.gov/media/webcam/view.htm?id=33478DF3-1DD8-B71B-0B8C97DB0A03B0F7",
-    laneSplitRatio: 0.5,
   },
   apgar_village: {
     key: "apgar_village",
-    name: "Apgar Village",
     title: "Apgar Village",
     page: "apgar_village.html",
     jsonPath: "glacier_apgar_village_feed.json",
     feedPath: "glacier_apgar_village_feed.txt",
-    historyPath: "glacier_apgar_village_history.jsonl",
     imagePath: "glacier_apgar_village_annotated.jpg",
     webcamPageUrl: "https://www.nps.gov/media/webcam/view.htm?id=81B4692D-1DD8-B71B-0B9AE4B7C186B022",
   },
 };
 
 const CAMERA_ORDER = ["logan_pass", "west_entrance", "apgar_village"];
+const REFRESH_INTERVAL_MS = 300000;
+
+// Fallback values keep local file:// previews usable when fetch is blocked.
+const FALLBACK_CAMERA_DATA = {
+  logan_pass: {
+    status: "local preview",
+    timestamp_utc: "",
+    vehicle_count: 0,
+    detected_vehicle_count: 0,
+    current_queue: 0,
+    peak_queue_today: 0,
+    current_queue_by_lane: null,
+    parking_spots_total: 100,
+    parking_spots_available: 100,
+    incoming_count: 0,
+    exiting_count: 0,
+    average_dwell_time_minutes: null,
+    message: "Local preview mode",
+  },
+  west_entrance: {
+    status: "local preview",
+    timestamp_utc: "",
+    vehicle_count: 0,
+    detected_vehicle_count: 0,
+    current_queue: 0,
+    peak_queue_today: 0,
+    current_queue_by_lane: { left_lane: 0, right_lane: 0 },
+    incoming_count: 0,
+    exiting_count: 0,
+    average_dwell_time_minutes: null,
+    message: "Local preview mode",
+  },
+  apgar_village: {
+    status: "local preview",
+    timestamp_utc: "",
+    vehicle_count: 0,
+    detected_vehicle_count: 0,
+    current_queue: 0,
+    peak_queue_today: 0,
+    current_queue_by_lane: null,
+    incoming_count: 0,
+    exiting_count: 0,
+    average_dwell_time_minutes: null,
+    message: "Local preview mode",
+  },
+};
 
 function formatUtc(value) {
   if (!value) return "--";
@@ -52,8 +88,25 @@ function formatUtc(value) {
   }).format(date)} UTC`;
 }
 
-function formatCount(value) {
-  return Number.isFinite(value) ? String(value) : "--";
+function formatLocalTimestamp(value) {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+    hour12: true,
+  }).format(date);
+}
+
+function formatMinutes(value) {
+  if (value === null || value === undefined || value === "") return "Calculating...";
+  const num = Number(value);
+  if (!Number.isFinite(num)) return "Calculating...";
+  return `${num.toFixed(num % 1 === 0 ? 0 : 1)} min`;
 }
 
 function parseFeed(text) {
@@ -80,35 +133,29 @@ function parseHistory(text) {
   return rows;
 }
 
-async function fetchText(path) {
-  const response = await fetch(path, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
-  return response.text();
+function getCameraKey() {
+  return document.body.dataset.camera || null;
 }
 
-async function fetchJson(path) {
-  const response = await fetch(path, { cache: "no-store" });
-  if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
-  return response.json();
+function getCameraConfig(cameraKey) {
+  return cameraKey ? GLACIER_CAMERAS[cameraKey] : null;
 }
 
-function derivedQueueByLane(camera, json, imageWidth) {
-  if (json.current_queue_by_lane) return json.current_queue_by_lane;
-  if (!camera.laneSplitRatio || !Array.isArray(json.detections) || !Number.isFinite(imageWidth)) return null;
+function getImageElement() {
+  return document.getElementById("webcam-image") || document.querySelector("[data-camera-image]");
+}
 
-  const counts = { left_lane: 0, right_lane: 0 };
-  for (const detection of json.detections) {
-    const box = detection.xyxy || [];
-    if (box.length < 4) continue;
-    const centerX = (Number(box[0]) + Number(box[2])) / 2;
-    if (centerX < imageWidth * camera.laneSplitRatio) counts.left_lane += 1;
-    else counts.right_lane += 1;
-  }
-  return counts;
+function getCountElements() {
+  return {
+    incoming: document.getElementById("incoming-count"),
+    exiting: document.getElementById("exiting-count"),
+    dwell: document.getElementById("dwell-time"),
+    totalParking: document.getElementById("total-parking-spots"),
+  };
 }
 
 function currentQueue(json) {
-  return Number.isFinite(json.current_queue) ? json.current_queue : (json.vehicle_count ?? 0);
+  return Number.isFinite(json.current_queue) ? json.current_queue : (json.vehicle_count ?? json.detected_vehicle_count ?? 0);
 }
 
 function peakQueue(json, historyRows) {
@@ -128,77 +175,82 @@ function availableParking(json, camera) {
   return Math.max(camera.parkingSpotsTotal - currentQueue(json), 0);
 }
 
-function laneLabel(key, camera) {
-  if (camera.key === "west_entrance") {
-    return key === "left_lane" ? "Left lane" : "Right lane";
-  }
-  return key === "left_lane" ? "Lane A" : "Lane B";
+function laneSummary(json) {
+  return json.current_queue_by_lane || null;
 }
 
-function renderFeed(feedMap, json, camera, historyRows) {
-  const feedStatus = document.querySelector("[data-feed-status]");
-  const feedTimestamp = document.querySelector("[data-feed-timestamp]");
-  const feedMessage = document.querySelector("[data-feed-message]");
-  const feedImageUrl = document.querySelector("[data-feed-image-url]");
-  const feedCurrentQueue = document.querySelector("[data-feed-current-queue]");
-  const feedPeakQueue = document.querySelector("[data-feed-peak-queue]");
-  const feedLaneQueue = document.querySelector("[data-feed-lane-queue]");
-  const feedParking = document.querySelector("[data-feed-parking]");
+async function fetchJson(path) {
+  const response = await fetch(path, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
+  return response.json();
+}
 
-  if (feedStatus) feedStatus.textContent = feedMap.get("status") || json.status || "--";
-  if (feedTimestamp) feedTimestamp.textContent = formatUtc(feedMap.get("timestamp_utc") || json.timestamp_utc);
-  if (feedMessage) feedMessage.textContent = feedMap.get("message") || json.message || "--";
-  if (feedImageUrl) feedImageUrl.textContent = feedMap.get("image_url") || json.image_url || "--";
-  if (feedCurrentQueue) feedCurrentQueue.textContent = String(currentQueue(json));
-  if (feedPeakQueue) feedPeakQueue.textContent = String(peakQueue(json, historyRows));
+async function fetchText(path) {
+  const response = await fetch(path, { cache: "no-store" });
+  if (!response.ok) throw new Error(`Unable to load ${path}: ${response.status}`);
+  return response.text();
+}
 
-  const laneCounts = derivedQueueByLane(camera, json);
-  if (feedLaneQueue) {
-    if (!laneCounts) {
-      feedLaneQueue.textContent = "Not split";
-    } else {
-      feedLaneQueue.textContent = Object.entries(laneCounts)
-        .map(([key, value]) => `${laneLabel(key, camera)} ${value}`)
-        .join(" | ");
-    }
+async function loadCameraSnapshot(cameraKey) {
+  const camera = getCameraConfig(cameraKey);
+  if (!camera) throw new Error(`Unknown camera: ${cameraKey}`);
+
+  if (window.location.protocol === "file:") {
+    return {
+      json: FALLBACK_CAMERA_DATA[cameraKey],
+      feedText: "",
+      historyRows: [],
+      isFallback: true,
+    };
   }
 
-  const parking = availableParking(json, camera);
-  if (feedParking) {
-    feedParking.textContent = Number.isFinite(parking) ? String(parking) : "N/A";
+  try {
+    const [json, feedText, historyText] = await Promise.all([
+      fetchJson(camera.jsonPath),
+      fetchText(camera.feedPath),
+      fetchText(camera.feedPath.replace("_feed.txt", "_history.jsonl")).catch(() => ""),
+    ]);
+    return {
+      json,
+      feedText,
+      historyRows: parseHistory(historyText),
+      isFallback: false,
+    };
+  } catch (error) {
+    console.info(`Fallback used for ${cameraKey}:`, error);
+    return {
+      json: FALLBACK_CAMERA_DATA[cameraKey],
+      feedText: "",
+      historyRows: [],
+      isFallback: true,
+    };
   }
 }
 
-function renderCameraPage(cameraKey, json, feedText, historyRows) {
-  const camera = GLACIER_CAMERAS[cameraKey];
-  const feedMap = parseFeed(feedText);
-  const queue = currentQueue(json);
-  const peak = peakQueue(json, historyRows);
-  const parking = availableParking(json, camera);
+function updateImage(camera) {
+  const imageEl = getImageElement();
+  if (!imageEl) return;
+  // Bust cache so GitHub-hosted webcam images refresh on every poll.
+  imageEl.src = `${camera.imagePath}?v=${Date.now()}`;
+  imageEl.alt = `${camera.title} annotated webcam image`;
+}
 
+function updateCameraHeader(camera, json) {
   const titleEl = document.querySelector("[data-camera-title]");
   const subtitleEl = document.querySelector("[data-camera-subtitle]");
-  const imageEl = document.querySelector("[data-camera-image]");
   const labelEl = document.querySelector("[data-camera-label]");
   const timestampEl = document.querySelector("[data-camera-timestamp]");
   const sourceEl = document.querySelector("[data-camera-source]");
   const syncEl = document.querySelector("[data-sync-text]");
-  const currentEl = document.querySelector("[data-current-queue]");
-  const peakEl = document.querySelector("[data-peak-queue]");
-  const parkingEl = document.querySelector("[data-parking-spots]");
-  const laneListEl = document.querySelector("[data-lane-list]");
-  const errorEl = document.querySelector("[data-error]");
 
   if (titleEl) titleEl.textContent = camera.title;
   if (subtitleEl) {
     subtitleEl.textContent =
       camera.key === "logan_pass"
-        ? "Current queue plus parking availability for the Logan Pass lot."
-        : "Current queue plus today's peak from the published history file.";
-  }
-  if (imageEl) {
-    imageEl.src = camera.imagePath;
-    imageEl.alt = `${camera.title} annotated webcam image`;
+        ? "Live vehicle counts and dwell time for the Logan Pass lot."
+        : camera.key === "west_entrance"
+          ? "Live incoming and exiting vehicle counts with the latest annotated image."
+          : "Latest annotated view and vehicle count.";
   }
   if (labelEl) labelEl.textContent = json.camera_label || camera.title;
   if (timestampEl) timestampEl.textContent = formatUtc(json.timestamp_utc);
@@ -206,71 +258,127 @@ function renderCameraPage(cameraKey, json, feedText, historyRows) {
     sourceEl.href = camera.webcamPageUrl;
     sourceEl.textContent = "Open source webcam page";
   }
-  if (syncEl) syncEl.textContent = `Updated ${formatUtc(json.timestamp_utc)}`;
-  if (currentEl) currentEl.textContent = String(queue);
-  if (peakEl) peakEl.textContent = String(peak);
-  if (parkingEl) parkingEl.textContent = Number.isFinite(parking) ? String(parking) : "N/A";
+  if (syncEl) syncEl.textContent = json.timestamp_utc ? `Updated ${formatUtc(json.timestamp_utc)}` : "Local preview";
+}
 
-  if (laneListEl) {
-    laneListEl.innerHTML = "";
-    const laneCounts = derivedQueueByLane(camera, json, imageEl?.naturalWidth);
-    if (!laneCounts) {
-      const row = document.createElement("li");
-      row.className = "lane-row";
-      row.innerHTML = `<span class="lane-name">Lane split</span><span class="lane-value">Not needed</span>`;
-      laneListEl.appendChild(row);
+function updateWestMetrics(json) {
+  const { incoming, exiting } = getCountElements();
+  const incomingCount = json.incoming_count ?? json.current_queue ?? json.vehicle_count ?? json.detected_vehicle_count ?? 0;
+  const exitingCount = json.exits ?? json.exiting_count ?? 0;
+  if (incoming) incoming.textContent = String(incomingCount);
+  if (exiting) exiting.textContent = String(exitingCount);
+}
+
+function updateLoganMetrics(json) {
+  const { incoming, dwell, totalParking } = getCountElements();
+  const queueCount = json.current_queue ?? json.vehicle_count ?? json.detected_vehicle_count ?? 0;
+  if (incoming) incoming.textContent = String(queueCount);
+  if (dwell) dwell.textContent = formatMinutes(json.average_dwell_time_minutes);
+  if (totalParking) totalParking.textContent = String(json.parking_spots_total ?? "--");
+}
+
+function updateGenericMetrics(json, camera, historyRows) {
+  const feedCurrentQueue = document.querySelector("[data-feed-current-queue]");
+  const feedPeakQueue = document.querySelector("[data-feed-peak-queue]");
+  const feedLaneQueue = document.querySelector("[data-feed-lane-queue]");
+  const feedParking = document.querySelector("[data-feed-parking]");
+  const feedStatus = document.querySelector("[data-feed-status]");
+  const feedTimestamp = document.querySelector("[data-feed-timestamp]");
+  const feedMessage = document.querySelector("[data-feed-message]");
+  const feedImageUrl = document.querySelector("[data-feed-image-url]");
+  const primaryQueue = currentQueue(json);
+
+  if (feedStatus) feedStatus.textContent = json.status || "ok";
+  if (feedTimestamp) feedTimestamp.textContent = json.timestamp_utc ? formatUtc(json.timestamp_utc) : "--";
+  if (feedMessage) feedMessage.textContent = json.message || "--";
+  if (feedImageUrl) feedImageUrl.textContent = json.image_url || "--";
+
+  if (camera.key === "west_entrance") {
+    if (feedCurrentQueue) feedCurrentQueue.textContent = String(json.incoming_count ?? primaryQueue);
+    if (feedPeakQueue) feedPeakQueue.textContent = String(json.exits ?? json.exiting_count ?? 0);
+    const lanes = laneSummary(json);
+    if (feedLaneQueue) {
+      feedLaneQueue.textContent = lanes
+        ? Object.entries(lanes).map(([k, v]) => `${k}: ${v}`).join(" | ")
+        : "Not split";
+    }
+    if (feedParking) feedParking.textContent = "";
+  } else if (camera.key === "logan_pass") {
+    if (feedCurrentQueue) feedCurrentQueue.textContent = String(primaryQueue);
+    if (feedPeakQueue) feedPeakQueue.textContent = String(peakQueue(json, historyRows));
+    if (feedLaneQueue) feedLaneQueue.textContent = "Not needed";
+    if (feedParking) {
+      const parking = availableParking(json, camera);
+      feedParking.textContent = Number.isFinite(parking) ? String(parking) : "N/A";
+    }
+  } else {
+    if (feedCurrentQueue) feedCurrentQueue.textContent = String(primaryQueue);
+    if (feedPeakQueue) feedPeakQueue.textContent = String(peakQueue(json, historyRows));
+    if (feedLaneQueue) feedLaneQueue.textContent = "Not needed";
+    if (feedParking) feedParking.textContent = "";
+  }
+}
+
+function updatePageData(cameraKey, json, feedText, historyRows, isFallback) {
+  const camera = getCameraConfig(cameraKey);
+  if (!camera) return;
+
+  updateCameraHeader(camera, json);
+  updateImage(camera);
+  updateGenericMetrics(json, camera, historyRows);
+
+  if (cameraKey === "west_entrance") {
+    updateWestMetrics(json);
+  } else if (cameraKey === "logan_pass") {
+    updateLoganMetrics(json);
+  }
+
+  const errorEl = document.querySelector("[data-error]");
+  if (errorEl) {
+    if (isFallback) {
+      errorEl.style.display = "block";
+      errorEl.textContent = "Local preview mode: live JSON fetch is unavailable, so fallback data is shown.";
     } else {
-      for (const [key, value] of Object.entries(laneCounts)) {
-        const row = document.createElement("li");
-        row.className = "lane-row";
-        row.innerHTML = `<span class="lane-name">${laneLabel(key, camera)}</span><span class="lane-value">${value}</span>`;
-        laneListEl.appendChild(row);
-      }
+      errorEl.style.display = "none";
+      errorEl.textContent = "";
     }
   }
 
-  renderFeed(feedMap, json, camera, historyRows);
-
-  if (errorEl) errorEl.style.display = "none";
-
   document.querySelectorAll("[data-nav-camera]").forEach((link) => {
-    link.setAttribute("aria-current", link.dataset.navCamera === camera.key ? "page" : "false");
+    link.setAttribute("aria-current", link.dataset.navCamera === cameraKey ? "page" : "false");
   });
+
+  return { json, feedText, historyRows };
 }
 
-async function loadCameraData(cameraKey) {
-  const camera = GLACIER_CAMERAS[cameraKey];
-  const [json, feedText, historyText] = await Promise.all([
-    fetchJson(camera.jsonPath),
-    fetchText(camera.feedPath),
-    fetchText(camera.historyPath).catch(() => ""),
-  ]);
-  return { json, feedText, historyRows: parseHistory(historyText) };
+async function refreshCameraPage(cameraKey) {
+  const snapshot = await loadCameraSnapshot(cameraKey);
+  updatePageData(cameraKey, snapshot.json, snapshot.feedText, snapshot.historyRows, snapshot.isFallback);
 }
 
 async function renderOverview() {
-  const cards = await Promise.all(
+  const entries = await Promise.all(
     CAMERA_ORDER.map(async (cameraKey) => {
-      const camera = GLACIER_CAMERAS[cameraKey];
-      const { json, historyRows } = await loadCameraData(cameraKey);
-      return { camera, json, historyRows };
+      const camera = getCameraConfig(cameraKey);
+      const snapshot = await loadCameraSnapshot(cameraKey);
+      return { camera, ...snapshot };
     })
   );
 
-  for (const { camera, json, historyRows } of cards) {
-    const card = document.querySelector(`[data-summary-card="${camera.key}"]`);
+  for (const entry of entries) {
+    if (!entry.camera) continue;
+    const card = document.querySelector(`[data-summary-card="${entry.camera.key}"]`);
     if (!card) continue;
     const queueEl = card.querySelector("[data-summary-current]");
     const peakEl = card.querySelector("[data-summary-peak]");
     const timeEl = card.querySelector("[data-summary-time]");
     const imageEl = card.querySelector("[data-summary-image]");
     const linkEl = card.querySelector("[data-summary-link]");
-
-    if (queueEl) queueEl.textContent = String(currentQueue(json));
-    if (peakEl) peakEl.textContent = String(peakQueue(json, historyRows));
-    if (timeEl) timeEl.textContent = formatUtc(json.timestamp_utc);
-    if (imageEl) imageEl.src = camera.imagePath;
-    if (linkEl) linkEl.href = camera.page;
+    if (queueEl) queueEl.textContent = String(currentQueue(entry.json));
+    if (peakEl) peakEl.textContent = String(peakQueue(entry.json, entry.historyRows));
+    if (timeEl) timeEl.textContent = formatUtc(entry.json.timestamp_utc);
+    if (imageEl) imageEl.src = `${entry.camera.imagePath}?v=${Date.now()}`;
+    if (linkEl) linkEl.href = entry.camera.page;
   }
 }
 
@@ -281,30 +389,22 @@ function wireHomeLinks() {
 }
 
 async function initGlacierSite() {
-  const view = document.body.dataset.view;
   wireHomeLinks();
 
+  const view = document.body.dataset.view;
   if (view === "overview") {
-    renderOverview().catch((error) => {
-      console.error(error);
-    });
+    renderOverview().catch((error) => console.error(error));
     return;
   }
 
-  const cameraKey = document.body.dataset.camera;
-  if (!cameraKey || !GLACIER_CAMERAS[cameraKey]) return;
+  const cameraKey = getCameraKey();
+  if (!cameraKey || !getCameraConfig(cameraKey)) return;
 
-  try {
-    const { json, feedText, historyRows } = await loadCameraData(cameraKey);
-    renderCameraPage(cameraKey, json, feedText, historyRows);
-  } catch (error) {
-    console.error(error);
-    const errorEl = document.querySelector("[data-error]");
-    if (errorEl) {
-      errorEl.style.display = "block";
-      errorEl.textContent = "The Glacier feed could not be loaded from the published GitHub pages files.";
-    }
-  }
+  await refreshCameraPage(cameraKey);
+  // Re-poll the feed and image every 5 minutes without a full page reload.
+  setInterval(() => {
+    refreshCameraPage(cameraKey).catch((error) => console.error(error));
+  }, REFRESH_INTERVAL_MS);
 }
 
 document.addEventListener("DOMContentLoaded", initGlacierSite);

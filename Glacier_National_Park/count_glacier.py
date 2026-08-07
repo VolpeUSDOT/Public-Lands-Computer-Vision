@@ -33,6 +33,7 @@ DEFAULT_OUTPUT_PATH = SCRIPT_DIR / "glacier_latest_feed.json"
 DEFAULT_FEED_OUTPUT_PATH = SCRIPT_DIR / "glacier_latest_feed.txt"
 DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH = SCRIPT_DIR / "glacier_latest_annotated.jpg"
 DEFAULT_HISTORY_OUTPUT_PATH = SCRIPT_DIR / "glacier_latest_history.jsonl"
+DEFAULT_TRACKING_STATE_OUTPUT_PATH = SCRIPT_DIR / "glacier_latest_tracking_state.json"
 DEFAULT_USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
     "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
@@ -41,21 +42,27 @@ VEHICLE_CLASSES = [2, 3, 5, 7]
 DEFAULT_CAMERA_NAME = "logan_pass"
 ALL_CAMERA_NAME = "all"
 DEFAULT_LOGAN_PASS_PARKING_SPOTS_TOTAL = 100
+WEST_ENTRANCE_COUNTING_LINE_RATIO = 0.58
+WEST_ENTRANCE_MOTION_THRESHOLD_PX = 8.0
+TRACK_IOU_MATCH_THRESHOLD = 0.30
 
 GLACIER_CAMERAS: dict[str, dict[str, str]] = {
     "logan_pass": {
         "label": "Logan Pass Parking Lot",
         "webcam_page_url": "https://www.nps.gov/media/webcam/view.htm?id=325AE6AF-BAEB-F65D-EF3D638BF683E78E&r=/glac/learn/photosmultimedia/webcams.htm",
         "parking_spots_total": str(DEFAULT_LOGAN_PASS_PARKING_SPOTS_TOTAL),
+        "tracking_mode": "dwell",
     },
     "west_entrance": {
         "label": "West Entrance",
         "webcam_page_url": "https://www.nps.gov/media/webcam/view.htm?id=33478DF3-1DD8-B71B-0B8C97DB0A03B0F7",
         "lane_split_ratio": "0.50",
+        "tracking_mode": "directional",
     },
     "apgar_village": {
         "label": "Apgar Village",
         "webcam_page_url": "https://www.nps.gov/media/webcam/view.htm?id=81B4692D-1DD8-B71B-0B9AE4B7C186B022",
+        "tracking_mode": "detect",
     },
 }
 
@@ -72,7 +79,8 @@ class Config:
     feed_output_path: Path = DEFAULT_FEED_OUTPUT_PATH
     annotated_image_output_path: Path = DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH
     history_output_path: Path = DEFAULT_HISTORY_OUTPUT_PATH
-    confidence: float = 0.5
+    tracking_state_output_path: Path = DEFAULT_TRACKING_STATE_OUTPUT_PATH
+    confidence: float = 0.15
     iou: float = 0.45
     image_size: int = 1280
     user_agent: str = DEFAULT_USER_AGENT
@@ -84,6 +92,7 @@ class DetectionBox:
     class_name: str
     confidence: float
     xyxy: list[float]
+    track_id: Optional[int] = None
 
 
 @dataclass
@@ -102,6 +111,10 @@ class RunResult:
     peak_queue_today: Optional[int] = None
     parking_spots_total: Optional[int] = None
     parking_spots_available: Optional[int] = None
+    incoming_count: Optional[int] = None
+    exiting_count: Optional[int] = None
+    exits: Optional[int] = None
+    average_dwell_time_minutes: Optional[float] = None
     detections: list[DetectionBox] = field(default_factory=list)
     message: Optional[str] = None
     error: Optional[str] = None
@@ -141,7 +154,9 @@ def load_config() -> Config:
         output_path=Path(os.getenv("OUTPUT_PATH", str(DEFAULT_OUTPUT_PATH))).expanduser(),
         feed_output_path=Path(os.getenv("FEED_OUTPUT_PATH", str(DEFAULT_FEED_OUTPUT_PATH))).expanduser(),
         annotated_image_output_path=Path(os.getenv("ANNOTATED_IMAGE_OUTPUT_PATH", str(DEFAULT_ANNOTATED_IMAGE_OUTPUT_PATH))).expanduser(),
-        confidence=float(os.getenv("YOLO_CONFIDENCE", "0.5")),
+        history_output_path=Path(os.getenv("HISTORY_OUTPUT_PATH", str(DEFAULT_HISTORY_OUTPUT_PATH))).expanduser(),
+        tracking_state_output_path=Path(os.getenv("TRACKING_STATE_OUTPUT_PATH", str(DEFAULT_TRACKING_STATE_OUTPUT_PATH))).expanduser(),
+        confidence=float(os.getenv("YOLO_CONFIDENCE", "0.15")),
         iou=float(os.getenv("YOLO_IOU", "0.45")),
         image_size=int(os.getenv("YOLO_IMAGE_SIZE", "1280")),
         user_agent=os.getenv("USER_AGENT", DEFAULT_USER_AGENT),
@@ -239,6 +254,332 @@ def camera_history_path(base_path: Path, camera_name: str, default_camera_name: 
     return base.with_name(f"{stem}.jsonl")
 
 
+def camera_tracking_state_path(base_path: Path, camera_name: str, default_camera_name: str = DEFAULT_CAMERA_NAME) -> Path:
+    base = camera_output_path(base_path, camera_name, default_camera_name)
+    stem = base.stem
+    if stem.endswith("_tracking_state"):
+        return base
+    if stem.endswith("_latest"):
+        stem = stem.replace("_latest", "")
+    return base.with_name(f"{stem}_tracking_state.json")
+
+
+def parse_utc_timestamp(value: str) -> datetime:
+    if value.endswith("Z"):
+        value = value[:-1] + "+00:00"
+    return datetime.fromisoformat(value)
+
+
+def format_minutes(value: float) -> float:
+    return round(value, 2)
+
+
+def bbox_center(xyxy: list[float]) -> tuple[float, float]:
+    x1, y1, x2, y2 = xyxy
+    return ((x1 + x2) / 2.0, (y1 + y2) / 2.0)
+
+
+def west_entrance_motion_vector(current_xyxy: list[float], previous_xyxy: Optional[list[float]]) -> tuple[float, float]:
+    current_center_x, current_center_y = bbox_center(current_xyxy)
+    if previous_xyxy is None:
+        return 0.0, 0.0
+    previous_center_x, previous_center_y = bbox_center(previous_xyxy)
+    return current_center_x - previous_center_x, current_center_y - previous_center_y
+
+
+def bbox_iou(a: list[float], b: list[float]) -> float:
+    ax1, ay1, ax2, ay2 = a
+    bx1, by1, bx2, by2 = b
+    inter_x1 = max(ax1, bx1)
+    inter_y1 = max(ay1, by1)
+    inter_x2 = min(ax2, bx2)
+    inter_y2 = min(ay2, by2)
+    inter_w = max(0.0, inter_x2 - inter_x1)
+    inter_h = max(0.0, inter_y2 - inter_y1)
+    inter_area = inter_w * inter_h
+    if inter_area <= 0.0:
+        return 0.0
+    area_a = max(0.0, ax2 - ax1) * max(0.0, ay2 - ay1)
+    area_b = max(0.0, bx2 - bx1) * max(0.0, by2 - by1)
+    union = area_a + area_b - inter_area
+    if union <= 0.0:
+        return 0.0
+    return inter_area / union
+
+
+def load_tracking_state(path: Path) -> dict[str, object]:
+    default_state: dict[str, object] = {
+        "next_stable_id": 1,
+        "tracker_to_stable": {},
+        "tracks": {},
+    }
+    if not path.exists():
+        return default_state
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return default_state
+    if not isinstance(data, dict):
+        return default_state
+    data.setdefault("next_stable_id", 1)
+    data.setdefault("tracker_to_stable", {})
+    data.setdefault("tracks", {})
+    return data
+
+
+def save_tracking_state(path: Path, state: dict[str, object]) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(json.dumps(state, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    return path
+
+
+def collect_vehicle_detections(results) -> list[DetectionBox]:
+    detections: list[DetectionBox] = []
+    for result in results:
+        names = result.names
+        boxes = result.boxes
+        if boxes is None:
+            continue
+        for box in boxes:
+            class_id = int(box.cls.item())
+            if class_id not in VEHICLE_CLASSES:
+                continue
+            xyxy = [float(v) for v in box.xyxy[0].tolist()]
+            confidence = float(box.conf.item())
+            track_id = None
+            if getattr(box, "id", None) is not None:
+                try:
+                    track_id = int(box.id.item())
+                except Exception:
+                    track_id = None
+            detections.append(
+                DetectionBox(
+                    class_id=class_id,
+                    class_name=str(names.get(class_id, class_id)),
+                    confidence=confidence,
+                    xyxy=xyxy,
+                    track_id=track_id,
+                )
+            )
+    return detections
+
+
+def resolve_stable_track_id(
+    state: dict[str, object],
+    detection: DetectionBox,
+    camera_name: str,
+    timestamp_utc: str,
+) -> str:
+    tracker_to_stable = state.setdefault("tracker_to_stable", {})
+    tracks = state.setdefault("tracks", {})
+    raw_tracker_id = str(detection.track_id) if detection.track_id is not None else None
+
+    if raw_tracker_id and raw_tracker_id in tracker_to_stable:
+        return str(tracker_to_stable[raw_tracker_id])
+
+    best_stable_id: Optional[str] = None
+    best_iou = 0.0
+    for stable_id, track in tracks.items():
+        if not isinstance(track, dict):
+            continue
+        if track.get("camera_name") != camera_name:
+            continue
+        if track.get("class_id") != detection.class_id:
+            continue
+        if track.get("active") is False:
+            continue
+        previous_xyxy = track.get("last_xyxy")
+        if not isinstance(previous_xyxy, list) or len(previous_xyxy) != 4:
+            continue
+        score = bbox_iou(previous_xyxy, detection.xyxy)
+        if score > best_iou:
+            best_iou = score
+            best_stable_id = str(stable_id)
+
+    if best_stable_id is not None and best_iou >= TRACK_IOU_MATCH_THRESHOLD:
+        if raw_tracker_id:
+            tracker_to_stable[raw_tracker_id] = best_stable_id
+        return best_stable_id
+
+    next_stable_id = int(state.get("next_stable_id", 1))
+    stable_id = f"vehicle_{next_stable_id}"
+    state["next_stable_id"] = next_stable_id + 1
+    if raw_tracker_id:
+        tracker_to_stable[raw_tracker_id] = stable_id
+    return stable_id
+
+
+def upsert_track_record(
+    state: dict[str, object],
+    stable_id: str,
+    detection: DetectionBox,
+    camera_name: str,
+    timestamp_utc: str,
+    motion_class: Optional[str] = None,
+    motion_dx: Optional[float] = None,
+    motion_dy: Optional[float] = None,
+) -> None:
+    tracks = state.setdefault("tracks", {})
+    track = tracks.get(stable_id)
+    if not isinstance(track, dict):
+        track = {}
+        tracks[stable_id] = track
+    if "first_seen" not in track:
+        track["first_seen"] = timestamp_utc
+    track["camera_name"] = camera_name
+    track["class_id"] = detection.class_id
+    track["class_name"] = detection.class_name
+    track["last_seen"] = timestamp_utc
+    track["active"] = True
+    track["last_xyxy"] = detection.xyxy
+    track["last_track_id"] = detection.track_id
+    if motion_class is not None:
+        track["motion_class"] = motion_class
+    if motion_dx is not None:
+        track["motion_dx"] = motion_dx
+    if motion_dy is not None:
+        track["motion_dy"] = motion_dy
+
+
+def finalize_missing_tracks(state: dict[str, object], camera_name: str, active_stable_ids: set[str], timestamp_utc: str) -> None:
+    tracks = state.setdefault("tracks", {})
+    for stable_id, track in tracks.items():
+        if not isinstance(track, dict):
+            continue
+        if track.get("camera_name") != camera_name:
+            continue
+        if stable_id in active_stable_ids:
+            continue
+        if track.get("active") is not False:
+            track["active"] = False
+            track["disappeared_at"] = timestamp_utc
+
+
+def summarize_logan_pass_dwell_time(
+    detections: list[DetectionBox],
+    state: dict[str, object],
+    camera_name: str,
+    timestamp_utc: str,
+) -> tuple[int, Optional[float], int]:
+    active_stable_ids: set[str] = set()
+    for detection in detections:
+        stable_id = resolve_stable_track_id(state, detection, camera_name, timestamp_utc)
+        active_stable_ids.add(stable_id)
+        upsert_track_record(state, stable_id, detection, camera_name, timestamp_utc)
+
+    finalize_missing_tracks(state, camera_name, active_stable_ids, timestamp_utc)
+
+    now_dt = parse_utc_timestamp(timestamp_utc)
+    active_tracks = []
+    tracks = state.get("tracks", {})
+    if isinstance(tracks, dict):
+        for stable_id, track in tracks.items():
+            if not isinstance(track, dict):
+                continue
+            if track.get("camera_name") != camera_name or track.get("active") is not True:
+                continue
+            first_seen = track.get("first_seen")
+            if not isinstance(first_seen, str):
+                continue
+            try:
+                first_seen_dt = parse_utc_timestamp(first_seen)
+            except ValueError:
+                continue
+            dwell_minutes = max((now_dt - first_seen_dt).total_seconds() / 60.0, 0.0)
+            active_tracks.append(dwell_minutes)
+
+    average_dwell_time_minutes = format_minutes(sum(active_tracks) / len(active_tracks)) if active_tracks else None
+    return len(active_stable_ids), average_dwell_time_minutes, len(active_tracks)
+
+
+def classify_west_entrance_motion(
+    current_xyxy: list[float],
+    previous_xyxy: Optional[list[float]],
+    line_x: float,
+    motion_dx: Optional[float] = None,
+    motion_dy: Optional[float] = None,
+) -> str:
+    current_center_x, _ = bbox_center(current_xyxy)
+    if motion_dx is None or motion_dy is None:
+        motion_dx, motion_dy = west_entrance_motion_vector(current_xyxy, previous_xyxy)
+
+    # The entrance road flows leftward into the park and rightward out of it in this frame.
+    # The virtual line helps stabilize the direction call when the tracker only moves a few pixels.
+    if previous_xyxy is None:
+        return "incoming" if current_center_x >= line_x else "exiting"
+
+    previous_center_x, _ = bbox_center(previous_xyxy)
+
+    if previous_center_x >= line_x and current_center_x < line_x and motion_dx < 0:
+        return "incoming"
+    if previous_center_x <= line_x and current_center_x > line_x and motion_dx > 0:
+        return "exiting"
+    if abs(motion_dx) >= WEST_ENTRANCE_MOTION_THRESHOLD_PX and abs(motion_dx) >= abs(motion_dy):
+        return "incoming" if motion_dx < 0 else "exiting"
+    return "incoming" if current_center_x >= line_x else "exiting"
+
+
+def summarize_west_entrance_counts(
+    detections: list[DetectionBox],
+    state: dict[str, object],
+    camera_name: str,
+    timestamp_utc: str,
+    image_width: float,
+) -> tuple[int, int, dict[str, int]]:
+    line_x = image_width * WEST_ENTRANCE_COUNTING_LINE_RATIO
+    active_stable_ids: set[str] = set()
+    incoming_count = 0
+    exiting_count = 0
+    lane_counts = {"left_lane": 0, "right_lane": 0}
+
+    tracks = state.setdefault("tracks", {})
+    for detection in detections:
+        stable_id = resolve_stable_track_id(state, detection, camera_name, timestamp_utc)
+        active_stable_ids.add(stable_id)
+
+        previous_xyxy = None
+        existing_track = tracks.get(stable_id)
+        if isinstance(existing_track, dict):
+            previous_xyxy = existing_track.get("last_xyxy") if isinstance(existing_track.get("last_xyxy"), list) else None
+
+        motion_dx, motion_dy = west_entrance_motion_vector(detection.xyxy, previous_xyxy)
+        motion_class = classify_west_entrance_motion(
+            detection.xyxy,
+            previous_xyxy,
+            line_x,
+            motion_dx=motion_dx,
+            motion_dy=motion_dy,
+        )
+        if motion_class == "incoming":
+            incoming_count += 1
+            center_x, _ = bbox_center(detection.xyxy)
+            if center_x < line_x:
+                lane_counts["left_lane"] += 1
+            else:
+                lane_counts["right_lane"] += 1
+        else:
+            exiting_count += 1
+
+        upsert_track_record(
+            state,
+            stable_id,
+            detection,
+            camera_name,
+            timestamp_utc,
+            motion_class=motion_class,
+            motion_dx=motion_dx,
+            motion_dy=motion_dy,
+        )
+        track = tracks.get(stable_id)
+        if isinstance(track, dict):
+            track["motion_class"] = motion_class
+            track["motion_dx"] = motion_dx
+            track["motion_dy"] = motion_dy
+
+    finalize_missing_tracks(state, camera_name, active_stable_ids, timestamp_utc)
+    return incoming_count, exiting_count, lane_counts
+
+
 def read_history_entries(path: Path) -> list[dict[str, object]]:
     if not path.exists():
         return []
@@ -282,6 +623,10 @@ def append_history_entry(path: Path, result: RunResult) -> Path:
         "current_queue_by_lane": result.current_queue_by_lane,
         "parking_spots_total": result.parking_spots_total,
         "parking_spots_available": result.parking_spots_available,
+        "incoming_count": result.incoming_count,
+        "exiting_count": result.exiting_count,
+        "exits": result.exits,
+        "average_dwell_time_minutes": result.average_dwell_time_minutes,
     }
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(payload, ensure_ascii=False) + "\n")
@@ -302,27 +647,21 @@ def detect_vehicles(img: np.ndarray, config: Config) -> list[DetectionBox]:
         imgsz=config.image_size,
         verbose=False,
     )
-    detections: list[DetectionBox] = []
-    for result in results:
-        names = result.names
-        boxes = result.boxes
-        if boxes is None:
-            continue
-        for box in boxes:
-            class_id = int(box.cls.item())
-            if class_id not in VEHICLE_CLASSES:
-                continue
-            xyxy = [float(v) for v in box.xyxy[0].tolist()]
-            confidence = float(box.conf.item())
-            detections.append(
-                DetectionBox(
-                    class_id=class_id,
-                    class_name=str(names.get(class_id, class_id)),
-                    confidence=confidence,
-                    xyxy=xyxy,
-                )
-            )
-    return detections
+    return collect_vehicle_detections(results)
+
+
+def track_vehicles(img: np.ndarray, config: Config, persist: bool = True) -> list[DetectionBox]:
+    model = load_model(config.model_path)
+    results = model.track(
+        source=img,
+        conf=config.confidence,
+        iou=config.iou,
+        imgsz=config.image_size,
+        classes=VEHICLE_CLASSES,
+        persist=persist,
+        verbose=False,
+    )
+    return collect_vehicle_detections(results)
 
 
 def annotate_image(img: np.ndarray, detections: list[DetectionBox]) -> np.ndarray:
@@ -359,6 +698,10 @@ def result_to_feed_text(result: RunResult) -> str:
         f"current_queue_by_lane: {json.dumps(result.current_queue_by_lane or {}, ensure_ascii=False)}",
         f"parking_spots_total: {result.parking_spots_total if result.parking_spots_total is not None else ''}",
         f"parking_spots_available: {result.parking_spots_available if result.parking_spots_available is not None else ''}",
+        f"incoming_count: {result.incoming_count if result.incoming_count is not None else ''}",
+        f"exiting_count: {result.exiting_count if result.exiting_count is not None else ''}",
+        f"exits: {result.exits if result.exits is not None else ''}",
+        f"average_dwell_time_minutes: {result.average_dwell_time_minutes if result.average_dwell_time_minutes is not None else ''}",
         f"vehicle_count: {result.vehicle_count}",
         f"detected_vehicle_count: {result.detected_vehicle_count}",
         f"model_path: {result.model_path}",
@@ -414,22 +757,56 @@ def run_camera(config: Config) -> tuple[int, str]:
             headers,
         )
         img = download_image(image_url, headers, referer=config.webcam_page_url)
-        detections = detect_vehicles(img, config)
+        camera = GLACIER_CAMERAS.get(config.camera_name, {})
+        tracking_mode = camera.get("tracking_mode", "detect")
+        if tracking_mode in {"directional", "dwell"}:
+            detections = track_vehicles(img, config, persist=True)
+        else:
+            detections = detect_vehicles(img, config)
+
         annotated_image = annotate_image(img, detections)
-        lane_split_ratio = GLACIER_CAMERAS.get(config.camera_name, {}).get("lane_split_ratio")
-        current_queue, current_queue_by_lane = summarize_queue(
-            detections,
-            img.shape,
-            float(lane_split_ratio) if lane_split_ratio is not None else None,
-        )
-        parking_spots_total_raw = GLACIER_CAMERAS.get(config.camera_name, {}).get("parking_spots_total")
+        lane_split_ratio = camera.get("lane_split_ratio")
+        parking_spots_total_raw = camera.get("parking_spots_total")
         parking_spots_total = int(parking_spots_total_raw) if parking_spots_total_raw is not None else None
+        tracking_state = load_tracking_state(config.tracking_state_output_path)
+
+        if config.camera_name == "west_entrance":
+            incoming_count, exiting_count, current_queue_by_lane = summarize_west_entrance_counts(
+                detections,
+                tracking_state,
+                config.camera_name,
+                timestamp_utc,
+                float(img.shape[1]),
+            )
+            current_queue = incoming_count
+            exits = exiting_count
+            average_dwell_time_minutes = None
+        elif config.camera_name == "logan_pass":
+            current_queue, average_dwell_time_minutes, _active_vehicle_count = summarize_logan_pass_dwell_time(
+                detections,
+                tracking_state,
+                config.camera_name,
+                timestamp_utc,
+            )
+            incoming_count = current_queue
+            exiting_count = 0
+            exits = 0
+            current_queue_by_lane = None
+        else:
+            current_queue, current_queue_by_lane = summarize_queue(
+                detections,
+                img.shape,
+                float(lane_split_ratio) if lane_split_ratio is not None else None,
+            )
+            incoming_count = current_queue
+            exiting_count = 0
+            exits = 0
+            average_dwell_time_minutes = None
+
+        save_tracking_state(config.tracking_state_output_path, tracking_state)
+
         peak_today = peak_queue_today(config.history_output_path, current_queue, timestamp_utc)
-        parking_spots_available = (
-            max(parking_spots_total - current_queue, 0)
-            if parking_spots_total is not None
-            else None
-        )
+        parking_spots_available = max(parking_spots_total - current_queue, 0) if parking_spots_total is not None else None
         result = RunResult(
             status="ok",
             timestamp_utc=timestamp_utc,
@@ -438,13 +815,17 @@ def run_camera(config: Config) -> tuple[int, str]:
             webcam_page_url=config.webcam_page_url,
             image_url=image_url,
             model_path=config.model_path,
-            vehicle_count=len(detections),
+            vehicle_count=current_queue,
             detected_vehicle_count=len(detections),
             current_queue=current_queue,
             current_queue_by_lane=current_queue_by_lane,
             peak_queue_today=peak_today,
             parking_spots_total=parking_spots_total,
             parking_spots_available=parking_spots_available,
+            incoming_count=incoming_count,
+            exiting_count=exiting_count,
+            exits=exits,
+            average_dwell_time_minutes=average_dwell_time_minutes,
             detections=detections,
             message=f"Current queue {current_queue}, peak today {peak_today}",
         )
@@ -470,6 +851,9 @@ def run_camera(config: Config) -> tuple[int, str]:
             current_queue=0,
             current_queue_by_lane=None,
             peak_queue_today=0,
+            incoming_count=0,
+            exiting_count=0,
+            exits=0,
             error=str(exc),
         )
         json_text = result_to_json_text(result)
@@ -494,6 +878,7 @@ def build_camera_config(base_config: Config, camera_name: str) -> Config:
         feed_output_path=camera_output_path(base_config.feed_output_path, camera_name),
         annotated_image_output_path=camera_output_path(base_config.annotated_image_output_path, camera_name),
         history_output_path=camera_history_path(base_config.history_output_path, camera_name),
+        tracking_state_output_path=camera_tracking_state_path(base_config.tracking_state_output_path, camera_name),
         confidence=base_config.confidence,
         iou=base_config.iou,
         image_size=base_config.image_size,
@@ -543,6 +928,7 @@ def build_config(args: argparse.Namespace) -> Config:
         feed_output_path=args.feed_output or config.feed_output_path,
         annotated_image_output_path=args.annotated_image_output or config.annotated_image_output_path,
         history_output_path=config.history_output_path,
+        tracking_state_output_path=config.tracking_state_output_path,
         confidence=args.confidence if args.confidence is not None else config.confidence,
         iou=args.iou if args.iou is not None else config.iou,
         image_size=args.imgsz if args.imgsz is not None else config.image_size,
