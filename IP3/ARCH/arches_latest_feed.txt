@@ -1,19 +1,15 @@
 Arches webcam vehicle feed
-status: ok
-timestamp_utc: 2026-08-08T23:45:15.268094+00:00
-total_vehicles_detected: 4
-vehicles_in_lane_1: 4
+status: error
+timestamp_utc: 2026-08-09T00:00:22.232136+00:00
+total_vehicles_detected: 0
+vehicles_in_lane_1: 0
 vehicles_in_lane_2: 0
-vehicles_in_line: 4
+vehicles_in_line: 0
 on_entrance_road: 0
-message: Detected 4 vehicles anywhere in frame; lane 1=4, lane 2=0, in line=4, on_entrance_road=0
-detections:
-- car (class_id=2, confidence=0.944) xyxy=[376.8671875, 852.3458862304688, 768.5775756835938, 1180.446044921875]
-- car (class_id=2, confidence=0.914) xyxy=[732.738525390625, 705.901123046875, 972.2243041992188, 884.0565795898438]
-- car (class_id=2, confidence=0.770) xyxy=[1142.330078125, 627.4995727539062, 1221.4132080078125, 696.380859375]
-- car (class_id=2, confidence=0.571) xyxy=[1023.32861328125, 645.934326171875, 1163.1453857421875, 730.6024169921875]
+error: HTTPSConnectionPool(host='www.nps.gov', port=443): Max retries exceeded with url: /webcams-arch/arch_traffic.jpg?1782413491434=&_=20260809000102274866 (Caused by NewConnectionError('<urllib3.connection.HTTPSConnection object at 0x7f0268ac5f40>: Failed to establish a new connection: [Errno 101] Network is unreachable'))
+detections: none
 lane_breakdown:
-- vehicles_in_lane_1: 4
+- vehicles_in_lane_1: 0
 - vehicles_in_lane_2: 0
-- vehicles_in_line: 4
+- vehicles_in_line: 0
 output_schema: arch_lane_vehicle_feed_v1
