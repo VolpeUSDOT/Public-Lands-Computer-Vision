@@ -1,18 +1,18 @@
 Willow Creek Trail Parking Lot webcam vehicle feed
 status: ok
-timestamp_utc: 2026-08-18T13:04:19.247007+00:00
+timestamp_utc: 2026-08-18T13:05:18.849085+00:00
 webcam_page_url: https://www.ipcamlive.com/willowcreektrail
 image_url: https://s94.ipcamlive.com/streams/5ecwrphridbnhsxje/snapshot.jpg
 model_path: yolov8m.pt
-vehicle_count: 1
-tracked_vehicle_count: 1
-average_vehicle_dwell_seconds: 64.75798916816711
+vehicle_count: 2
+tracked_vehicle_count: 2
+average_vehicle_dwell_seconds: 64.61398458480835
 occupied_spot_count: 1
 empty_spot_count: 16
-message: Detected 1 vehicles; occupied 1 spots
+message: Detected 2 vehicles; occupied 1 spots
 spots:
 - Spot 1 (spot_1): Occupied since 2026-08-18T13:03:15.312209+00:00
-  vehicle: bus (track_id=65, confidence=0.387) bound=[574.962646484375, 326.755859375, 613.597412109375, 373.74267578125] dwell 64 sec
+  vehicle: car (track_id=65, confidence=0.370) bound=[558.6956787109375, 329.56109619140625, 578.1309814453125, 359.47772216796875] dwell 129 sec
 - Spot 2 (spot_2): Empty since 2026-08-18T00:15:18.695089+00:00
 - Spot 3 (spot_3): Empty since 2026-08-18T02:13:13.990335+00:00
 - Spot 4 (spot_4): Empty since 2026-08-18T01:00:30.911273+00:00
@@ -30,5 +30,6 @@ spots:
 - Spot 16 (spot_16): Empty since 2026-08-18T10:16:22.621254+00:00
 - Spot 17 (spot_17): Empty since 2026-08-17T21:50:20.512144+00:00
 detections:
-- bus (class_id=5, confidence=0.387) xyxy=[574.962646484375, 326.755859375, 613.597412109375, 373.74267578125] dwell 64 sec
+- bus (class_id=5, confidence=0.776) xyxy=[573.0079345703125, 325.57037353515625, 615.9166259765625, 374.53790283203125] dwell 0 sec
+- car (class_id=2, confidence=0.370) xyxy=[558.6956787109375, 329.56109619140625, 578.1309814453125, 359.47772216796875] dwell 129 sec
 output_schema: wct_parking_spot_occupancy_v1
