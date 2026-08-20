@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "timestamp_utc": "2026-08-20T11:48:13.427252+00:00",
+  "timestamp_utc": "2026-08-20T11:49:12.280742+00:00",
   "webcam_page_url": "https://www.ipcamlive.com/willowcreektrail",
   "image_url": "https://s94.ipcamlive.com/streams/5ecwrphridbnhsxje/snapshot.jpg",
   "model_path": "yolov8m.pt",
@@ -9,21 +9,21 @@
   "occupied_spot_count": 1,
   "empty_spot_count": 16,
   "tracked_vehicle_count": 1,
-  "average_vehicle_dwell_seconds": 60.20397996902466,
+  "average_vehicle_dwell_seconds": 0.0,
   "detections": [
     {
-      "class_id": 2,
-      "class_name": "car",
-      "confidence": 0.35066333413124084,
+      "class_id": 7,
+      "class_name": "truck",
+      "confidence": 0.6065812110900879,
       "xyxy": [
-        340.3268737792969,
-        338.20440673828125,
-        365.8039245605469,
-        349.27069091796875
+        391.47467041015625,
+        328.7344970703125,
+        450.56561279296875,
+        369.36712646484375
       ],
-      "track_id": 596,
-      "dwell_seconds": 60,
-      "spot_id": "spot_5"
+      "track_id": 597,
+      "dwell_seconds": 0,
+      "spot_id": "spot_4"
     }
   ],
   "spots": [
@@ -123,9 +123,20 @@
           377.0
         ]
       ],
-      "status": "Empty",
-      "status_since_utc": "2026-08-20T11:48:13.427252+00:00",
-      "vehicle": null
+      "status": "Occupied",
+      "status_since_utc": "2026-08-20T11:49:12.280742+00:00",
+      "vehicle": {
+        "track_id": 597,
+        "vehicle_type": "truck",
+        "vehicle_bound": [
+          391.47467041015625,
+          328.7344970703125,
+          450.56561279296875,
+          369.36712646484375
+        ],
+        "confidence": 0.6065812110900879,
+        "dwell_seconds": 0
+      }
     },
     {
       "spot_id": "spot_5",
@@ -148,20 +159,9 @@
           372.0
         ]
       ],
-      "status": "Occupied",
-      "status_since_utc": "2026-08-20T11:47:12.755072+00:00",
-      "vehicle": {
-        "track_id": 596,
-        "vehicle_type": "car",
-        "vehicle_bound": [
-          340.3268737792969,
-          338.20440673828125,
-          365.8039245605469,
-          349.27069091796875
-        ],
-        "confidence": 0.35066333413124084,
-        "dwell_seconds": 60
-      }
+      "status": "Empty",
+      "status_since_utc": "2026-08-20T11:49:12.280742+00:00",
+      "vehicle": null
     },
     {
       "spot_id": "spot_6",
