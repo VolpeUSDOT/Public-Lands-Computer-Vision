@@ -1,43 +1,57 @@
 {
   "status": "ok",
-  "timestamp_utc": "2026-08-20T13:04:12.064434+00:00",
+  "timestamp_utc": "2026-08-20T13:05:21.426813+00:00",
   "webcam_page_url": "https://www.ipcamlive.com/willowcreektrail",
-  "image_url": "https://s94.ipcamlive.com/streams/5ecwrphridbnhsxje/snapshot.jpg",
+  "image_url": "http://s94.ipcamlive.com/streams/5ecwrphridbnhsxje/snapshot.jpg",
   "model_path": "yolov8m.pt",
-  "vehicle_count": 2,
-  "detected_vehicle_count": 2,
-  "occupied_spot_count": 2,
-  "empty_spot_count": 15,
-  "tracked_vehicle_count": 2,
-  "average_vehicle_dwell_seconds": 514.1620790958405,
+  "vehicle_count": 3,
+  "detected_vehicle_count": 3,
+  "occupied_spot_count": 3,
+  "empty_spot_count": 14,
+  "tracked_vehicle_count": 3,
+  "average_vehicle_dwell_seconds": 415.4939440091451,
   "detections": [
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.8798537850379944,
+      "confidence": 0.8908659219741821,
       "xyxy": [
-        207.03475952148438,
-        326.8389892578125,
-        277.8460998535156,
-        361.163818359375
+        207.15985107421875,
+        326.916748046875,
+        278.28387451171875,
+        361.9044189453125
       ],
       "track_id": 2,
-      "dwell_seconds": 514,
+      "dwell_seconds": 623,
       "spot_id": "spot_7"
     },
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.7917720675468445,
+      "confidence": 0.7744995951652527,
       "xyxy": [
-        207.9243927001953,
-        326.98047637939453,
-        246.88584899902344,
-        360.55140686035156
+        207.74989318847656,
+        327.16259002685547,
+        246.89683532714844,
+        361.7587585449219
       ],
       "track_id": 1,
-      "dwell_seconds": 514,
+      "dwell_seconds": 623,
       "spot_id": "spot_8"
+    },
+    {
+      "class_id": 7,
+      "class_name": "truck",
+      "confidence": 0.48609670996665955,
+      "xyxy": [
+        391.6827087402344,
+        328.9004211425781,
+        450.3528747558594,
+        369.2259826660156
+      ],
+      "track_id": 5,
+      "dwell_seconds": 0,
+      "spot_id": "spot_4"
     }
   ],
   "spots": [
@@ -137,9 +151,20 @@
           377.0
         ]
       ],
-      "status": "Empty",
-      "status_since_utc": "2026-08-20T13:04:12.064434+00:00",
-      "vehicle": null
+      "status": "Occupied",
+      "status_since_utc": "2026-08-20T13:05:21.426813+00:00",
+      "vehicle": {
+        "track_id": 5,
+        "vehicle_type": "truck",
+        "vehicle_bound": [
+          391.6827087402344,
+          328.9004211425781,
+          450.3528747558594,
+          369.2259826660156
+        ],
+        "confidence": 0.48609670996665955,
+        "dwell_seconds": 0
+      }
     },
     {
       "spot_id": "spot_5",
@@ -218,13 +243,13 @@
         "track_id": 2,
         "vehicle_type": "car",
         "vehicle_bound": [
-          207.03475952148438,
-          326.8389892578125,
-          277.8460998535156,
-          361.163818359375
+          207.15985107421875,
+          326.916748046875,
+          278.28387451171875,
+          361.9044189453125
         ],
-        "confidence": 0.8798537850379944,
-        "dwell_seconds": 514
+        "confidence": 0.8908659219741821,
+        "dwell_seconds": 623
       }
     },
     {
@@ -254,13 +279,13 @@
         "track_id": 1,
         "vehicle_type": "car",
         "vehicle_bound": [
-          207.9243927001953,
-          326.98047637939453,
-          246.88584899902344,
-          360.55140686035156
+          207.74989318847656,
+          327.16259002685547,
+          246.89683532714844,
+          361.7587585449219
         ],
-        "confidence": 0.7917720675468445,
-        "dwell_seconds": 514
+        "confidence": 0.7744995951652527,
+        "dwell_seconds": 623
       }
     },
     {
@@ -489,7 +514,7 @@
       "vehicle": null
     }
   ],
-  "message": "Detected 2 vehicles; occupied 2 spots",
+  "message": "Detected 3 vehicles; occupied 3 spots",
   "error": null,
   "output_schema": "wct_parking_spot_occupancy_v1"
 }
