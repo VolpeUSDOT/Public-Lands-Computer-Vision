@@ -1,30 +1,32 @@
 Willow Creek Trail Parking Lot webcam vehicle feed
 status: ok
-timestamp_utc: 2026-08-30T00:31:18.372558+00:00
+timestamp_utc: 2026-08-30T00:32:15.243443+00:00
 webcam_page_url: https://www.ipcamlive.com/willowcreektrail
 image_url: https://s94.ipcamlive.com/streams/5eq5oxb1rip3l8ynw/snapshot.jpg
 model_path: yolov8m.pt
-vehicle_count: 3
-tracked_vehicle_count: 3
-average_vehicle_dwell_seconds: 1761.0033071835835
-occupied_spot_count: 3
-empty_spot_count: 14
-message: Detected 3 vehicles; occupied 3 spots
+vehicle_count: 5
+tracked_vehicle_count: 5
+average_vehicle_dwell_seconds: 1091.253561592102
+occupied_spot_count: 5
+empty_spot_count: 12
+message: Detected 5 vehicles; occupied 5 spots
 spots:
-- Spot 1 (spot_1): Empty since 2026-08-30T00:31:18.372558+00:00
+- Spot 1 (spot_1): Occupied since 2026-08-30T00:32:15.243443+00:00
+  vehicle: car (track_id=2888, confidence=0.386) bound=[564.1558227539062, 319.0986328125, 604.2070922851562, 372.97235107421875] dwell 0 sec
 - Spot 2 (spot_2): Empty since 2026-08-29T20:18:11.577303+00:00
 - Spot 3 (spot_3): Empty since 2026-08-30T00:24:16.437015+00:00
 - Spot 4 (spot_4): Empty since 2026-08-29T20:24:16.542133+00:00
 - Spot 5 (spot_5): Empty since 2026-08-30T00:31:18.372558+00:00
 - Spot 6 (spot_6): Empty since 2026-08-30T00:15:20.804764+00:00
 - Spot 7 (spot_7): Occupied since 2026-08-30T00:24:16.437015+00:00
-  vehicle: car (track_id=2883, confidence=0.405) bound=[250.44961547851562, 324.2469482421875, 318.4627380371094, 361.7296142578125] dwell 419 sec
-- Spot 8 (spot_8): Empty since 2026-08-30T00:31:18.372558+00:00
+  vehicle: car (track_id=2883, confidence=0.570) bound=[255.86782836914062, 326.60235595703125, 318.4707946777344, 362.40240478515625] dwell 477 sec
+- Spot 8 (spot_8): Occupied since 2026-08-30T00:32:15.243443+00:00
+  vehicle: truck (track_id=2887, confidence=0.401) bound=[203.2171630859375, 322.8800354003906, 257.0453186035156, 360.0838928222656] dwell 0 sec
 - Spot 9 (spot_9): Occupied since 2026-08-30T00:13:19.246651+00:00
-  vehicle: car (track_id=2871, confidence=0.816) bound=[143.42611694335938, 323.1817626953125, 205.42861938476562, 352.4696044921875] dwell 1078 sec
+  vehicle: car (track_id=2871, confidence=0.861) bound=[143.85000610351562, 323.1531982421875, 205.40469360351562, 352.01812744140625] dwell 1135 sec
 - Spot 10 (spot_10): Empty since 2026-08-30T00:20:17.355706+00:00
 - Spot 11 (spot_11): Occupied since 2026-08-29T23:28:13.084202+00:00
-  vehicle: car (track_id=2857, confidence=0.843) bound=[101.78594970703125, 322.63018798828125, 149.44973754882812, 343.2506103515625] dwell 3785 sec
+  vehicle: car (track_id=2857, confidence=0.852) bound=[101.78109741210938, 323.16429138183594, 146.69151306152344, 342.75457763671875] dwell 3843 sec
 - Spot 12 (spot_12): Empty since 2026-08-30T00:14:15.788532+00:00
 - Spot 13 (spot_13): Empty since 2026-08-30T00:13:19.246651+00:00
 - Spot 14 (spot_14): Empty since 2026-08-29T23:37:15.350731+00:00
@@ -32,7 +34,9 @@ spots:
 - Spot 16 (spot_16): Empty since 2026-08-29T20:24:16.542133+00:00
 - Spot 17 (spot_17): Empty since 2026-08-29T17:48:14.701938+00:00
 detections:
-- car (class_id=2, confidence=0.843) xyxy=[101.78594970703125, 322.63018798828125, 149.44973754882812, 343.2506103515625] dwell 3785 sec
-- car (class_id=2, confidence=0.816) xyxy=[143.42611694335938, 323.1817626953125, 205.42861938476562, 352.4696044921875] dwell 1078 sec
-- car (class_id=2, confidence=0.405) xyxy=[250.44961547851562, 324.2469482421875, 318.4627380371094, 361.7296142578125] dwell 419 sec
+- car (class_id=2, confidence=0.861) xyxy=[143.85000610351562, 323.1531982421875, 205.40469360351562, 352.01812744140625] dwell 1135 sec
+- car (class_id=2, confidence=0.852) xyxy=[101.78109741210938, 323.16429138183594, 146.69151306152344, 342.75457763671875] dwell 3843 sec
+- car (class_id=2, confidence=0.570) xyxy=[255.86782836914062, 326.60235595703125, 318.4707946777344, 362.40240478515625] dwell 477 sec
+- truck (class_id=7, confidence=0.401) xyxy=[203.2171630859375, 322.8800354003906, 257.0453186035156, 360.0838928222656] dwell 0 sec
+- car (class_id=2, confidence=0.386) xyxy=[564.1558227539062, 319.0986328125, 604.2070922851562, 372.97235107421875] dwell 0 sec
 output_schema: wct_parking_spot_occupancy_v1
