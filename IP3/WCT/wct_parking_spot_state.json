@@ -1,6 +1,6 @@
 {
   "output_schema": "wct_parking_spot_state_v1",
-  "timestamp_utc": "2026-09-01T13:43:29.368367+00:00",
+  "timestamp_utc": "2026-09-01T13:44:30.279651+00:00",
   "spots": [
     {
       "spot_id": "spot_1",
@@ -33,9 +33,20 @@
     {
       "spot_id": "spot_5",
       "label": "Spot 5",
-      "status": "Empty",
-      "status_since_utc": "2026-09-01T13:02:12.289424+00:00",
-      "vehicle": null
+      "status": "Occupied",
+      "status_since_utc": "2026-09-01T13:44:12.108858+00:00",
+      "vehicle": {
+        "track_id": 4441,
+        "vehicle_type": "car",
+        "vehicle_bound": [
+          339.5534973144531,
+          336.062744140625,
+          369.1609191894531,
+          347.454833984375
+        ],
+        "confidence": 0.42427363991737366,
+        "dwell_seconds": 0
+      }
     },
     {
       "spot_id": "spot_6",
@@ -47,20 +58,9 @@
     {
       "spot_id": "spot_7",
       "label": "Spot 7",
-      "status": "Occupied",
-      "status_since_utc": "2026-09-01T13:43:11.272824+00:00",
-      "vehicle": {
-        "track_id": 4440,
-        "vehicle_type": "car",
-        "vehicle_bound": [
-          205.26513671875,
-          323.17547607421875,
-          285.11016845703125,
-          361.102783203125
-        ],
-        "confidence": 0.44145846366882324,
-        "dwell_seconds": 0
-      }
+      "status": "Empty",
+      "status_since_utc": "2026-09-01T13:44:12.108858+00:00",
+      "vehicle": null
     },
     {
       "spot_id": "spot_8",
@@ -106,13 +106,13 @@
         "track_id": 4439,
         "vehicle_type": "bus",
         "vehicle_bound": [
-          67.11563873291016,
-          307.2611999511719,
-          127.1419448852539,
-          339.4704284667969
+          67.60244750976562,
+          307.3169250488281,
+          125.98126220703125,
+          339.2057189941406
         ],
-        "confidence": 0.48101967573165894,
-        "dwell_seconds": 0
+        "confidence": 0.649330198764801,
+        "dwell_seconds": 60
       }
     },
     {
@@ -132,20 +132,9 @@
     {
       "spot_id": "spot_16",
       "label": "Spot 16",
-      "status": "Occupied",
-      "status_since_utc": "2026-09-01T13:42:12.233637+00:00",
-      "vehicle": {
-        "track_id": 4436,
-        "vehicle_type": "truck",
-        "vehicle_bound": [
-          11.818288803100586,
-          303.59716796875,
-          66.58362579345703,
-          335.1363525390625
-        ],
-        "confidence": 0.6688655614852905,
-        "dwell_seconds": 59
-      }
+      "status": "Empty",
+      "status_since_utc": "2026-09-01T13:44:12.108858+00:00",
+      "vehicle": null
     },
     {
       "spot_id": "spot_17",
@@ -156,13 +145,13 @@
         "track_id": 4438,
         "vehicle_type": "truck",
         "vehicle_bound": [
-          10.504247665405273,
-          305.14209747314453,
-          40.67245101928711,
-          334.81050872802734
+          9.903898239135742,
+          304.62506103515625,
+          40.108516693115234,
+          334.9787292480469
         ],
-        "confidence": 0.5687495470046997,
-        "dwell_seconds": 0
+        "confidence": 0.4868850111961365,
+        "dwell_seconds": 60
       }
     }
   ]
