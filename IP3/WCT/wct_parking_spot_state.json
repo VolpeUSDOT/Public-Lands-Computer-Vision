@@ -1,6 +1,6 @@
 {
   "output_schema": "wct_parking_spot_state_v1",
-  "timestamp_utc": "2026-09-02T12:32:29.722472+00:00",
+  "timestamp_utc": "2026-09-02T12:33:29.522191+00:00",
   "spots": [
     {
       "spot_id": "spot_1",
@@ -54,9 +54,20 @@
     {
       "spot_id": "spot_8",
       "label": "Spot 8",
-      "status": "Empty",
-      "status_since_utc": "2026-09-02T12:28:11.107309+00:00",
-      "vehicle": null
+      "status": "Occupied",
+      "status_since_utc": "2026-09-02T12:33:12.118384+00:00",
+      "vehicle": {
+        "track_id": 512,
+        "vehicle_type": "car",
+        "vehicle_bound": [
+          209.85025024414062,
+          321.04815673828125,
+          283.0249938964844,
+          358.2984619140625
+        ],
+        "confidence": 0.4195075035095215,
+        "dwell_seconds": 0
+      }
     },
     {
       "spot_id": "spot_9",
@@ -116,32 +127,21 @@
         "track_id": 510,
         "vehicle_type": "truck",
         "vehicle_bound": [
-          8.223426818847656,
-          302.4822998046875,
-          64.44569396972656,
-          333.68505859375
+          9.301958084106445,
+          303.26171875,
+          64.63323974609375,
+          333.451416015625
         ],
-        "confidence": 0.430216521024704,
-        "dwell_seconds": 59
+        "confidence": 0.5868760347366333,
+        "dwell_seconds": 119
       }
     },
     {
       "spot_id": "spot_17",
       "label": "Spot 17",
-      "status": "Occupied",
-      "status_since_utc": "2026-09-02T12:32:12.252308+00:00",
-      "vehicle": {
-        "track_id": 511,
-        "vehicle_type": "car",
-        "vehicle_bound": [
-          8.388060569763184,
-          319.60497283935547,
-          32.28079605102539,
-          333.0756378173828
-        ],
-        "confidence": 0.4709194004535675,
-        "dwell_seconds": 0
-      }
+      "status": "Empty",
+      "status_since_utc": "2026-09-02T12:33:12.118384+00:00",
+      "vehicle": null
     }
   ]
 }
