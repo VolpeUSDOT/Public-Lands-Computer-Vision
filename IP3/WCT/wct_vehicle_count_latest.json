@@ -1,6 +1,6 @@
 {
   "status": "ok",
-  "timestamp_utc": "2026-09-09T12:54:13.561864+00:00",
+  "timestamp_utc": "2026-09-09T12:55:12.771256+00:00",
   "webcam_page_url": "https://www.ipcamlive.com/willowcreektrail",
   "image_url": "https://s94.ipcamlive.com/streams/5ensiwk0ae7dtyrxf/snapshot.jpg",
   "model_path": "yolov8m.pt",
@@ -9,49 +9,49 @@
   "occupied_spot_count": 3,
   "empty_spot_count": 14,
   "tracked_vehicle_count": 3,
-  "average_vehicle_dwell_seconds": 61.282895962397255,
+  "average_vehicle_dwell_seconds": 103.0133839448293,
   "detections": [
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.8719860911369324,
+      "confidence": 0.7410435080528259,
       "xyxy": [
-        250.23269653320312,
-        325.85113525390625,
-        319.1361999511719,
-        365.49041748046875
+        249.95535278320312,
+        326.197998046875,
+        318.2846374511719,
+        365.72406005859375
       ],
       "track_id": 134,
-      "dwell_seconds": 61,
+      "dwell_seconds": 124,
       "spot_id": "spot_7"
     },
     {
       "class_id": 7,
       "class_name": "truck",
-      "confidence": 0.6868293285369873,
+      "confidence": 0.6062794923782349,
       "xyxy": [
-        55.38311767578125,
-        315.67462158203125,
-        100.26315307617188,
-        337.1658935546875
+        55.456932067871094,
+        315.6380920410156,
+        100.79460906982422,
+        337.1126403808594
       ],
       "track_id": 133,
-      "dwell_seconds": 122,
+      "dwell_seconds": 184,
       "spot_id": "spot_14"
     },
     {
       "class_id": 2,
       "class_name": "car",
-      "confidence": 0.21837785840034485,
+      "confidence": 0.3989434838294983,
       "xyxy": [
-        120.23570251464844,
-        314.85095977783203,
-        128.2755889892578,
-        333.7414016723633
+        338.9644775390625,
+        337.3338928222656,
+        365.34906005859375,
+        349.5244445800781
       ],
-      "track_id": 135,
+      "track_id": 136,
       "dwell_seconds": 0,
-      "spot_id": "spot_12"
+      "spot_id": "spot_5"
     }
   ],
   "spots": [
@@ -176,9 +176,20 @@
           372.0
         ]
       ],
-      "status": "Empty",
-      "status_since_utc": "2026-09-09T01:37:11.531889+00:00",
-      "vehicle": null
+      "status": "Occupied",
+      "status_since_utc": "2026-09-09T12:55:12.771256+00:00",
+      "vehicle": {
+        "track_id": 136,
+        "vehicle_type": "car",
+        "vehicle_bound": [
+          338.9644775390625,
+          337.3338928222656,
+          365.34906005859375,
+          349.5244445800781
+        ],
+        "confidence": 0.3989434838294983,
+        "dwell_seconds": 0
+      }
     },
     {
       "spot_id": "spot_6",
@@ -232,13 +243,13 @@
         "track_id": 134,
         "vehicle_type": "car",
         "vehicle_bound": [
-          250.23269653320312,
-          325.85113525390625,
-          319.1361999511719,
-          365.49041748046875
+          249.95535278320312,
+          326.197998046875,
+          318.2846374511719,
+          365.72406005859375
         ],
-        "confidence": 0.8719860911369324,
-        "dwell_seconds": 61
+        "confidence": 0.7410435080528259,
+        "dwell_seconds": 124
       }
     },
     {
@@ -362,20 +373,9 @@
           335.0
         ]
       ],
-      "status": "Occupied",
-      "status_since_utc": "2026-09-09T12:54:13.561864+00:00",
-      "vehicle": {
-        "track_id": 135,
-        "vehicle_type": "car",
-        "vehicle_bound": [
-          120.23570251464844,
-          314.85095977783203,
-          128.2755889892578,
-          333.7414016723633
-        ],
-        "confidence": 0.21837785840034485,
-        "dwell_seconds": 0
-      }
+      "status": "Empty",
+      "status_since_utc": "2026-09-09T12:55:12.771256+00:00",
+      "vehicle": null
     },
     {
       "spot_id": "spot_13",
@@ -429,13 +429,13 @@
         "track_id": 133,
         "vehicle_type": "truck",
         "vehicle_bound": [
-          55.38311767578125,
-          315.67462158203125,
-          100.26315307617188,
-          337.1658935546875
+          55.456932067871094,
+          315.6380920410156,
+          100.79460906982422,
+          337.1126403808594
         ],
-        "confidence": 0.6868293285369873,
-        "dwell_seconds": 122
+        "confidence": 0.6062794923782349,
+        "dwell_seconds": 184
       }
     },
     {
