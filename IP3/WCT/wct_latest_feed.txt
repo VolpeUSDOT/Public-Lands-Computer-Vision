@@ -1,27 +1,29 @@
 Willow Creek Trail Parking Lot webcam vehicle feed
 status: ok
-timestamp_utc: 2026-09-09T15:34:10.473570+00:00
+timestamp_utc: 2026-09-09T15:35:12.477311+00:00
 webcam_page_url: https://www.ipcamlive.com/willowcreektrail
 image_url: https://s94.ipcamlive.com/streams/5ensiwk0ae7dtyrxf/snapshot.jpg
 model_path: yolov8m.pt
-vehicle_count: 3
-tracked_vehicle_count: 3
-average_vehicle_dwell_seconds: 1132.9083313147228
-occupied_spot_count: 3
-empty_spot_count: 14
-message: Detected 3 vehicles; occupied 3 spots
+vehicle_count: 5
+tracked_vehicle_count: 5
+average_vehicle_dwell_seconds: 717.2908927440643
+occupied_spot_count: 5
+empty_spot_count: 12
+message: Detected 5 vehicles; occupied 5 spots
 spots:
-- Spot 1 (spot_1): Empty since 2026-09-09T15:33:11.433237+00:00
+- Spot 1 (spot_1): Occupied since 2026-09-09T15:35:12.477311+00:00
+  vehicle: bus (track_id=230, confidence=0.467) bound=[572.9556274414062, 322.200439453125, 613.7667846679688, 376.3907470703125] dwell 0 sec
 - Spot 2 (spot_2): Empty since 2026-09-09T01:06:20.382769+00:00
 - Spot 3 (spot_3): Empty since 2026-09-09T15:26:10.107851+00:00
-- Spot 4 (spot_4): Empty since 2026-09-09T15:34:10.473570+00:00
+- Spot 4 (spot_4): Occupied since 2026-09-09T15:35:12.477311+00:00
+  vehicle: car (track_id=229, confidence=0.731) bound=[391.46673583984375, 334.46502685546875, 445.83001708984375, 374.25384521484375] dwell 0 sec
 - Spot 5 (spot_5): Empty since 2026-09-09T15:26:10.107851+00:00
 - Spot 6 (spot_6): Occupied since 2026-09-09T15:26:10.107851+00:00
-  vehicle: car (track_id=225, confidence=0.606) bound=[292.23876953125, 330.88812255859375, 357.225830078125, 366.02105712890625] dwell 480 sec
+  vehicle: car (track_id=225, confidence=0.855) bound=[292.12261962890625, 331.20806884765625, 357.43463134765625, 365.7645263671875] dwell 543 sec
 - Spot 7 (spot_7): Occupied since 2026-09-09T14:45:16.021074+00:00
-  vehicle: car (track_id=194, confidence=0.630) bound=[249.04637145996094, 323.8515625, 305.2529296875, 365.8331298828125] dwell 2918 sec
+  vehicle: car (track_id=194, confidence=0.673) bound=[248.35548400878906, 325.32476806640625, 315.2841796875, 366.33544921875] dwell 2980 sec
 - Spot 8 (spot_8): Occupied since 2026-09-09T15:34:10.473570+00:00
-  vehicle: car (track_id=228, confidence=0.409) bound=[177.99087524414062, 324.76324462890625, 240.92599487304688, 353.40069580078125] dwell 0 sec
+  vehicle: car (track_id=228, confidence=0.527) bound=[177.96981811523438, 326.6400146484375, 240.66339111328125, 354.98291015625] dwell 62 sec
 - Spot 9 (spot_9): Empty since 2026-09-09T01:23:12.163680+00:00
 - Spot 10 (spot_10): Empty since 2026-09-08T22:28:10.844981+00:00
 - Spot 11 (spot_11): Empty since 2026-09-08T23:36:10.061938+00:00
@@ -32,7 +34,9 @@ spots:
 - Spot 16 (spot_16): Empty since 2026-09-08T23:56:10.350486+00:00
 - Spot 17 (spot_17): Empty since 2026-09-08T23:44:11.179808+00:00
 detections:
-- car (class_id=2, confidence=0.630) xyxy=[249.04637145996094, 323.8515625, 305.2529296875, 365.8331298828125] dwell 2918 sec
-- car (class_id=2, confidence=0.606) xyxy=[292.23876953125, 330.88812255859375, 357.225830078125, 366.02105712890625] dwell 480 sec
-- car (class_id=2, confidence=0.409) xyxy=[177.99087524414062, 324.76324462890625, 240.92599487304688, 353.40069580078125] dwell 0 sec
+- car (class_id=2, confidence=0.855) xyxy=[292.12261962890625, 331.20806884765625, 357.43463134765625, 365.7645263671875] dwell 543 sec
+- car (class_id=2, confidence=0.731) xyxy=[391.46673583984375, 334.46502685546875, 445.83001708984375, 374.25384521484375] dwell 0 sec
+- car (class_id=2, confidence=0.673) xyxy=[248.35548400878906, 325.32476806640625, 315.2841796875, 366.33544921875] dwell 2980 sec
+- car (class_id=2, confidence=0.527) xyxy=[177.96981811523438, 326.6400146484375, 240.66339111328125, 354.98291015625] dwell 62 sec
+- bus (class_id=5, confidence=0.467) xyxy=[572.9556274414062, 322.200439453125, 613.7667846679688, 376.3907470703125] dwell 0 sec
 output_schema: wct_parking_spot_occupancy_v1
