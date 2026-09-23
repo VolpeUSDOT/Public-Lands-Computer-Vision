@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>West Entrance | Glacier National Park Webcam Analytics</title>
+  <style>
+    :root {
+      --bg: #eef5f6;
+      --bg-2: #f9fbfc;
+      --card: rgba(255, 255, 255, 0.9);
+      --ink: #10212a;
+      --muted: #5b6b75;
+      --accent: #0d6b7f;
+      --border: rgba(16, 33, 42, 0.12);
+      --shadow: 0 18px 50px rgba(16, 33, 42, 0.10);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: "Segoe UI", Arial, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(circle at top left, rgba(16, 166, 190, 0.14), transparent 28%),
+        linear-gradient(180deg, var(--bg), var(--bg-2));
+    }
+    .shell { width: min(1120px, calc(100% - 2rem)); margin: 0 auto; padding: 28px 0 48px; }
+    .topbar {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+    .back {
+      color: var(--accent);
+      text-decoration: none;
+      font-weight: 700;
+    }
+    .back:hover { text-decoration: underline; }
+    .hero {
+      padding: 28px;
+      border: 1px solid var(--border);
+      border-radius: 28px;
+      background: linear-gradient(135deg, rgba(16, 33, 42, 0.92), rgba(12, 82, 106, 0.90));
+      color: #fff;
+      box-shadow: var(--shadow);
+    }
+    .eyebrow {
+      margin: 0 0 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      font-size: 0.76rem;
+      color: rgba(255,255,255,0.72);
+    }
+    h1 { margin: 0; font-size: clamp(2rem, 4vw, 3.4rem); line-height: 1; }
+    .subtitle {
+      margin: 12px 0 0;
+      color: rgba(255,255,255,0.84);
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1.1fr) minmax(340px, 0.9fr);
+      gap: 18px;
+      margin-top: 18px;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      box-shadow: var(--shadow);
+      overflow: hidden;
+    }
+    .card-body { padding: 20px; }
+    .label {
+      margin: 0 0 6px;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+    .value {
+      margin: 0;
+      font-size: clamp(2rem, 4vw, 3rem);
+      font-weight: 800;
+      line-height: 1;
+    }
+    .grid-metrics {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .metric {
+      padding: 16px;
+      border-radius: 18px;
+      border: 1px solid var(--border);
+      background: #fff;
+    }
+    .metric span {
+      display: block;
+      color: var(--muted);
+      font-size: 0.82rem;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 6px;
+    }
+    .metric strong {
+      font-size: 1.8rem;
+      line-height: 1;
+    }
+    .image {
+      width: 100%;
+      display: block;
+      aspect-ratio: 16 / 9;
+      object-fit: cover;
+      border-top: 1px solid var(--border);
+    }
+    .feed-list {
+      display: grid;
+      gap: 10px;
+      margin: 0;
+      padding: 0;
+      list-style: none;
+    }
+    .feed-list li {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 0;
+      border-top: 1px solid rgba(16, 33, 42, 0.10);
+      color: var(--muted);
+    }
+    .feed-list li:first-child { border-top: 0; padding-top: 0; }
+    .feed-list strong { color: var(--ink); text-align: right; }
+    .error {
+      display: none;
+      margin-top: 14px;
+      color: #9b1c1c;
+      background: #fff1f1;
+      border: 1px solid #f2caca;
+      padding: 12px 14px;
+      border-radius: 14px;
+    }
+    @media (max-width: 900px) {
+      .grid { grid-template-columns: 1fr; }
+      .grid-metrics { grid-template-columns: 1fr; }
+    }
+    .sync-badge {
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: 16px;
+      background: rgba(13, 107, 127, 0.08);
+      border: 1px solid rgba(13, 107, 127, 0.16);
+    }
+    .sync-badge strong {
+      display: block;
+      font-size: 1rem;
+      color: var(--ink);
+    }
+    .sync-badge span {
+      display: block;
+      margin-top: 4px;
+      color: #75828a;
+      font-size: 0.86rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <div class="topbar">
+      <a class="back" href="index.html">Back to home</a>
+      <span style="color: var(--muted); font-size: 0.92rem;">West Entrance</span>
+    </div>
+
+    <section class="hero">
+      <p class="eyebrow">Glacier National Park Webcam Analytics</p>
+      <h1>West Entrance</h1>
+      <p class="subtitle">Lane-level and overall counts from the latest feed.</p>
+    </section>
+
+    <section class="grid" style="margin-top: 18px;">
+      <article class="card">
+        <div class="card-body">
+          <div class="sync-badge">
+            <strong id="syncTime">Last synced time: --</strong>
+            <span>Sourced from the latest published GitHub snapshot</span>
+          </div>
+          <p class="label">Overall vehicle count</p>
+          <p class="value" id="vehicleCount">Loading...</p>
+          <div class="grid-metrics" style="margin-top: 16px;">
+            <div class="metric">
+              <span>Left lane</span>
+              <strong id="leftLane">--</strong>
+            </div>
+            <div class="metric">
+              <span>Right lane</span>
+              <strong id="rightLane">--</strong>
+            </div>
+          </div>
+        </div>
+        <img class="image" src="glacier_west_entrance_annotated.jpg" alt="West Entrance annotated webcam image" />
+      </article>
+
+      <aside class="card">
+        <div class="card-body">
+          <p class="label">Feed file</p>
+          <ul class="feed-list">
+            <li><span>JSON</span><strong><a href="glacier_west_entrance_feed.json">Open feed</a></strong></li>
+            <li><span>Image</span><strong>glacier_west_entrance_annotated.jpg</strong></li>
+            <li><span>Source</span><strong id="status">Loading...</strong></li>
+          </ul>
+          <div class="error" id="errorBox"></div>
+        </div>
+      </aside>
+    </section>
+  </main>
+
+  <script>
+    const FEED = "glacier_west_entrance_feed.json";
+    const FALLBACK_DATA = {
+      vehicle_count: 1,
+      detected_vehicle_count: 1,
+      current_queue_by_lane: { left_lane: 1, right_lane: 0 },
+      timestamp_utc: "Local preview",
+      status: "local preview",
+    };
+    const vehicleCountEl = document.getElementById("vehicleCount");
+    const leftLaneEl = document.getElementById("leftLane");
+    const rightLaneEl = document.getElementById("rightLane");
+    const statusEl = document.getElementById("status");
+    const errorBox = document.getElementById("errorBox");
+
+    async function loadFeed() {
+      try {
+        const response = await fetch(FEED, { cache: "no-store" });
+        if (!response.ok) throw new Error(`Failed to load ${FEED}`);
+        return await response.json();
+      } catch (error) {
+        console.info("West Entrance local preview fallback:", error);
+        errorBox.style.display = "block";
+        errorBox.textContent = "Local preview mode: live JSON fetch is unavailable, so fallback data is shown.";
+        return FALLBACK_DATA;
+      }
+    }
+
+    function renderFeed(data) {
+      const overall = data.vehicle_count ?? data.detected_vehicle_count ?? data.current_queue ?? "--";
+      vehicleCountEl.textContent = overall;
+      const synced = formatTimestamp(data.timestamp_utc);
+      document.getElementById("syncTime").textContent = synced
+        ? `Last synced time: ${synced}`
+        : "Last synced time: --";
+      statusEl.textContent = data.status || "ok";
+
+      const laneCounts = data.current_queue_by_lane || {};
+      leftLaneEl.textContent = laneCounts.left_lane ?? "--";
+      rightLaneEl.textContent = laneCounts.right_lane ?? "--";
+    }
+
+    function formatTimestamp(value) {
+      if (!value) return "";
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return value;
+      return new Intl.DateTimeFormat("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        hour12: true,
+      }).format(date);
+    }
+
+    loadFeed().then(renderFeed);
+  </script>
+</body>
+</html>
