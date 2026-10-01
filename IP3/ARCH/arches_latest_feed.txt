@@ -1,15 +1,18 @@
 Arches webcam vehicle feed
-status: error
-timestamp_utc: 2026-10-01T19:30:16.437094+00:00
-total_vehicles_detected: 0
-vehicles_in_lane_1: 0
-vehicles_in_lane_2: 0
-vehicles_in_line: 0
-on_entrance_road: 0
-error: HTTPSConnectionPool(host='www.nps.gov', port=443): Read timed out.
-detections: none
+status: ok
+timestamp_utc: 2026-10-01T19:45:15.054620+00:00
+total_vehicles_detected: 3
+vehicles_in_lane_1: 1
+vehicles_in_lane_2: 2
+vehicles_in_line: 3
+on_entrance_road: 3
+message: Detected 3 vehicles anywhere in frame; lane 1=1, lane 2=2, in line=3, on_entrance_road=3
+detections:
+- car (class_id=2, confidence=0.894) xyxy=[581.760009765625, 757.96337890625, 864.1364135742188, 958.2628784179688]
+- car (class_id=2, confidence=0.862) xyxy=[1461.0806884765625, 725.2973022460938, 1746.698974609375, 965.0400390625]
+- truck (class_id=7, confidence=0.504) xyxy=[1692.620849609375, 771.0105590820312, 2402.216552734375, 1450.12939453125]
 lane_breakdown:
-- vehicles_in_lane_1: 0
-- vehicles_in_lane_2: 0
-- vehicles_in_line: 0
+- vehicles_in_lane_1: 1
+- vehicles_in_lane_2: 2
+- vehicles_in_line: 3
 output_schema: arch_lane_vehicle_feed_v1
