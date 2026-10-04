@@ -1,15 +1,19 @@
 Arches webcam vehicle feed
 status: ok
-timestamp_utc: 2026-10-04T19:00:20.690116+00:00
-total_vehicles_detected: 0
-vehicles_in_lane_1: 0
-vehicles_in_lane_2: 0
-vehicles_in_line: 0
+timestamp_utc: 2026-10-04T19:15:13.208059+00:00
+total_vehicles_detected: 4
+vehicles_in_lane_1: 2
+vehicles_in_lane_2: 2
+vehicles_in_line: 4
 on_entrance_road: 0
-message: Detected 0 vehicles anywhere in frame; lane 1=0, lane 2=0, in line=0, on_entrance_road=0
-detections: none
+message: Detected 4 vehicles anywhere in frame; lane 1=2, lane 2=2, in line=4, on_entrance_road=0
+detections:
+- car (class_id=2, confidence=0.863) xyxy=[853.985107421875, 668.0111083984375, 1013.3406372070312, 793.875]
+- car (class_id=2, confidence=0.744) xyxy=[364.50567626953125, 962.7074584960938, 508.97369384765625, 1289.7391357421875]
+- car (class_id=2, confidence=0.738) xyxy=[1410.21728515625, 607.9701538085938, 1483.14501953125, 653.6746826171875]
+- truck (class_id=7, confidence=0.565) xyxy=[1374.1585693359375, 642.9862060546875, 1521.81298828125, 786.427490234375]
 lane_breakdown:
-- vehicles_in_lane_1: 0
-- vehicles_in_lane_2: 0
-- vehicles_in_line: 0
+- vehicles_in_lane_1: 2
+- vehicles_in_lane_2: 2
+- vehicles_in_line: 4
 output_schema: arch_lane_vehicle_feed_v1
