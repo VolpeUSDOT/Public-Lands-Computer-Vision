@@ -1,15 +1,27 @@
 Arches webcam vehicle feed
-status: error
-timestamp_utc: 2026-10-06T15:45:13.370515+00:00
-total_vehicles_detected: 0
-vehicles_in_lane_1: 0
-vehicles_in_lane_2: 0
-vehicles_in_line: 0
+status: ok
+timestamp_utc: 2026-10-06T16:00:17.340316+00:00
+total_vehicles_detected: 12
+vehicles_in_lane_1: 8
+vehicles_in_lane_2: 4
+vehicles_in_line: 12
 on_entrance_road: 0
-error: HTTPSConnectionPool(host='www.nps.gov', port=443): Read timed out. (read timeout=10)
-detections: none
+message: Detected 12 vehicles anywhere in frame; lane 1=8, lane 2=4, in line=12, on_entrance_road=0
+detections:
+- car (class_id=2, confidence=0.951) xyxy=[1648.323486328125, 905.2230834960938, 2198.4658203125, 1379.0926513671875]
+- car (class_id=2, confidence=0.935) xyxy=[433.4646911621094, 821.1025390625, 778.0709228515625, 1103.0816650390625]
+- car (class_id=2, confidence=0.876) xyxy=[738.6449584960938, 741.2974853515625, 973.898681640625, 897.4219970703125]
+- car (class_id=2, confidence=0.860) xyxy=[1430.7138671875, 693.4297485351562, 1614.9688720703125, 858.1411743164062]
+- car (class_id=2, confidence=0.813) xyxy=[360.756591796875, 951.1721801757812, 516.089111328125, 1347.2979736328125]
+- car (class_id=2, confidence=0.773) xyxy=[1419.401611328125, 652.2939453125, 1522.9969482421875, 743.5472412109375]
+- car (class_id=2, confidence=0.756) xyxy=[1406.0435791015625, 609.6030883789062, 1501.2176513671875, 699.4409790039062]
+- car (class_id=2, confidence=0.698) xyxy=[906.2117309570312, 666.9124755859375, 1067.951904296875, 798.3445434570312]
+- car (class_id=2, confidence=0.664) xyxy=[1129.6771240234375, 643.6047973632812, 1197.813720703125, 707.9727172851562]
+- car (class_id=2, confidence=0.584) xyxy=[1333.9931640625, 595.0306396484375, 1411.927001953125, 643.7260131835938]
+- car (class_id=2, confidence=0.541) xyxy=[1270.2880859375, 597.7313232421875, 1336.4638671875, 661.4323120117188]
+- car (class_id=2, confidence=0.517) xyxy=[1060.259033203125, 642.2321166992188, 1148.669921875, 723.1000366210938]
 lane_breakdown:
-- vehicles_in_lane_1: 0
-- vehicles_in_lane_2: 0
-- vehicles_in_line: 0
+- vehicles_in_lane_1: 8
+- vehicles_in_lane_2: 4
+- vehicles_in_line: 12
 output_schema: arch_lane_vehicle_feed_v1
